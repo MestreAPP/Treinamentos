@@ -1,11 +1,14 @@
 /* =====================================================================
    Mestre - Treinamento · configuração do banco de dados (Supabase)
-   1. Abra seu projeto em supabase.com › Project Settings › API
-   2. Copie a "Project URL" e a chave "anon public"
-   3. Substitua os dois valores abaixo e publique novamente o site
-   A chave "anon public" pode ficar no site: o acesso é protegido pelas
-   regras de segurança (RLS) criadas pelo supabase.sql.
-   NUNCA coloque aqui a chave "service_role".
+   Onde encontrar os dois valores (painel do Supabase, dentro do projeto):
+   • Botão "Connect" no topo da tela  → Project URL e Publishable key
+   • ou Project Settings › API Keys    → Publishable key (sb_publishable_...)
+     e Project Settings › Data API     → Project URL (https://xxxx.supabase.co)
+   Projetos antigos: aba "Legacy API Keys" › chave "anon" (começa com eyJ...)
+   também funciona.
+   A Publishable key pode ficar no site: o acesso é protegido pelas regras
+   de segurança (RLS) criadas pelo supabase.sql.
+   NUNCA use aqui a Secret key (sb_secret_...) nem a service_role.
    ===================================================================== */
 window.MESTRE_CONFIG = {
   supabaseUrl: 'https://klvzejrcjwdfueqtfbhu.supabase.co',
