@@ -2412,7 +2412,14 @@ const isAdmin=()=>U()&&U().role==='admin';
 const canCourse=id=>{const u=U(); if(!u) return false; migrateUser(u); return u.role==='admin'||u.courses.includes(id);};
 const canLv=n=>{const u=U(); if(!u) return false; migrateUser(u); return u.role==='admin' || (canCourse(CUR)&&(u.access[CUR]||[]).includes(n));};
 
-const CFG=window.MESTRE_CONFIG||{};
+const CFG=Object.assign({},window.MESTRE_CONFIG||{});
+// Corrige endereços colados com caminho extra (ex.: .../rest/v1/) ou o link do painel do Supabase
+(function(){ try{ let u=String(CFG.supabaseUrl||'').trim().replace(/^["']|["']$/g,'');
+  const dash=u.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i); if(dash) u='https://'+dash[1]+'.supabase.co';
+  if(u&&!/^https?:\/\//i.test(u)) u='https://'+u;
+  if(u) CFG.supabaseUrl=new URL(u).origin;
+  CFG.supabaseKey=String(CFG.supabaseKey||'').trim().replace(/^["']|["']$/g,'');
+}catch(e){} })();
 const CFG_OK=!!(CFG.supabaseUrl&&CFG.supabaseKey&&!/SEU-PROJETO|SUA_CHAVE/.test(CFG.supabaseUrl+CFG.supabaseKey));
 let SB=null; try{ if(CFG_OK&&window.supabase&&window.supabase.createClient) SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); }catch(e){ SB=null; }
 const BASE_URL=location.origin+location.pathname;
@@ -2562,7 +2569,7 @@ function authShell(card){
 }
 function setupView(){
   authShell(`<h2>Configuração pendente</h2><p class="muted">O aplicativo ainda não está ligado ao banco de dados.</p>
-  <ol style="font-size:15px"><li>Crie um projeto gratuito em supabase.com.</li><li>No SQL Editor, execute o arquivo <code>supabase.sql</code>.</li><li>Em Project Settings › API, copie a <b>Project URL</b> e a chave <b>anon public</b>.</li><li>Cole os dois valores no arquivo <code>config.js</code> e publique novamente.</li></ol>
+  <ol style="font-size:15px"><li>Crie um projeto gratuito em supabase.com.</li><li>No SQL Editor, execute o arquivo <code>supabase.sql</code>.</li><li>No painel do projeto, clique em <b>Connect</b> (topo da tela) e copie a <b>Project URL</b> e a <b>Publishable key</b> (começa com <code>sb_publishable_</code>).</li><li>Cole os dois valores no arquivo <code>config.js</code> e publique novamente.</li></ol>
   <p class="muted">${window.supabase?'':'A biblioteca do Supabase não carregou: verifique a conexão com a internet. '}Veja o passo a passo completo no LEIA-ME.</p>`);
 }
 function authView(mode){
