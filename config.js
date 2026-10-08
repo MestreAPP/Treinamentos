@@ -8,6 +8,6 @@
    NUNCA coloque aqui a chave "service_role".
    ===================================================================== */
 window.MESTRE_CONFIG = {
-  supabaseUrl: 'https://klvzejrcjwdfueqtfbhu.supabase.co/rest/v1/',
+  supabaseUrl: 'https://klvzejrcjwdfueqtfbhu.supabase.co',
   supabaseKey: 'sb_publishable_l46fZHFNaNGtIRRx18L7UA_FJpJi86K'
 };
