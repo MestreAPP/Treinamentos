@@ -446,6 +446,8 @@ body.noauth .crsbtn{display:none}
 <div class="scrim" id="scrim"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" aria-hidden="true"></aside>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script>
 
 const R = n => (Math.round(n*100)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -2385,23 +2387,22 @@ function certView(n){
   };
 }
 
-/* =================== armazenamento =================== */
-const SKEY='trilha-fiscal-store-v2', OLDKEY='trilha-fiscal-v1';
+/* =================== armazenamento (Supabase) =================== */
+const OLDKEY='trilha-fiscal-store-v2';
 const DEF_SET={theme:'auto',font:'normal',calm:false,passPct:70,examMin:20,shuffle:true,autosave:true};
 const newCD=()=>({done:{},quiz:{},exams:{},notes:{},certs:{}});
 const newData=()=>({...newCD(),settings:{...DEF_SET}});
 function migrateUser(u){
   if(!u) return;
-  if(u.data&&!u.cd){ const {settings,...rest}=u.data; u.settings={...DEF_SET,...(settings||{})}; u.cd={fiscal:{...newCD(),...rest}}; if(!u.cur&&(Object.keys(rest.done||{}).length||Object.keys(rest.exams||{}).length)) u.cur='fiscal'; }
+  if(u.data&&!u.cd){ const {settings,...rest}=u.data; u.settings={...DEF_SET,...(settings||{})}; u.cd={fiscal:{...newCD(),...rest}}; }
   delete u.data;
   u.settings={...DEF_SET,...(u.settings||{})}; u.cd=u.cd||{};
-  if(!u.access||Array.isArray(u.access)) u.access={fiscal:Array.isArray(u.access)?u.access:[1,2,3,4],dp:[1,2,3,4]};
+  if(!u.access||Array.isArray(u.access)) u.access={fiscal:Array.isArray(u.access)?u.access:[1,2,3,4],dp:[1,2,3,4],ct:[1,2,3,4]};
   Object.keys(COURSES).forEach(c=>{ if(!u.access[c]) u.access[c]=[1,2,3,4]; });
-  if(!Array.isArray(u.courses)) u.courses=(STORE.defCourses||Object.keys(COURSES)).slice();
+  if(!Array.isArray(u.courses)) u.courses=Object.keys(COURSES);
 }
-let STORE={v:2,updatedAt:0,session:null,users:{}};
-try{const s=localStorage.getItem(SKEY); if(s){const o=JSON.parse(s); if(o&&o.users) STORE=o;}}catch(e){}
-let dirty=false, lastSaved=STORE.updatedAt||0, autoT=null, CLOUD=null;
+let STORE={session:null,users:{},org:{}};
+let dirty=false, lastSaved=0, autoT=null, ADMIN_LOADED=false, PENDING=false;
 
 const $=s=>document.querySelector(s);
 const main=$('#main'), side=$('#side'), drawer=$('#drawer'), scrim=$('#scrim');
@@ -2411,39 +2412,78 @@ const isAdmin=()=>U()&&U().role==='admin';
 const canCourse=id=>{const u=U(); if(!u) return false; migrateUser(u); return u.role==='admin'||u.courses.includes(id);};
 const canLv=n=>{const u=U(); if(!u) return false; migrateUser(u); return u.role==='admin' || (canCourse(CUR)&&(u.access[CUR]||[]).includes(n));};
 
-function writeLocal(){try{localStorage.setItem(SKEY,JSON.stringify(STORE)); return true;}catch(e){return false;}}
-async function saveNow(silent){
-  STORE.updatedAt=Date.now();
-  const ok=writeLocal();
-  if(CLOUD){try{await CLOUD.set({store:JSON.stringify(STORE),updatedAt:STORE.updatedAt});}catch(e){}}
-  dirty=false; lastSaved=STORE.updatedAt; updSave();
-  if(!silent) toast(ok?'Progresso salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Não foi possível salvar neste navegador');
-  return ok;
+const CFG=window.MESTRE_CONFIG||{};
+const CFG_OK=!!(CFG.supabaseUrl&&CFG.supabaseKey&&!/SEU-PROJETO|SUA_CHAVE/.test(CFG.supabaseUrl+CFG.supabaseKey));
+let SB=null; try{ if(CFG_OK&&window.supabase&&window.supabase.createClient) SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); }catch(e){ SB=null; }
+const BASE_URL=location.origin+location.pathname;
+const cacheKey=()=>'mestre-cache-'+(STORE.session||'');
+function writeCache(){ try{ const u=U(); if(u) localStorage.setItem(cacheKey(),JSON.stringify({t:Date.now(),cd:u.cd,settings:u.settings,cur:u.cur||null})); }catch(e){} }
+const ts=x=>x?Date.parse(x):0;
+function fromRow(p,rows){
+  const u={id:p.id,email:p.email,nome:p.nome||'',cargo:p.cargo||'',role:p.role,ativo:p.ativo,courses:p.courses||[],access:p.access||{},settings:{...DEF_SET,...(p.settings||{})},cur:p.cur||null,created:ts(p.created_at),lastLogin:ts(p.last_login),cd:{},_upd:0};
+  (rows||[]).forEach(r=>{ if(r.user_id&&r.user_id!==p.id) return; u.cd[r.course]=r.data||newCD(); u._upd=Math.max(u._upd,ts(r.updated_at)); });
+  migrateUser(u); return u;
 }
-function mark(){dirty=true; updSave(); try{checkCerts();}catch(e){} clearTimeout(autoT); if(U()&&D().settings.autosave) autoT=setTimeout(()=>saveNow(true),1500);}
-function updSave(){const b=$('#saveBtn'); b.classList.toggle('dirty',dirty); $('#saveTxt').textContent=dirty?'Salvar':'Salvo'; b.title=dirty?'Há alterações não salvas':'Tudo salvo'+(lastSaved?' às '+new Date(lastSaved).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'');}
+const ptErr=e=>{const m=String((e&&(e.message||e.error_description))||e||'');
+  if(/Invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+  if(/Email not confirmed/i.test(m)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
+  if(/already registered|already exists/i.test(m)) return 'Este e-mail já está cadastrado. Use a opção Entrar.';
+  if(/Password should be at least/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if(/rate limit|too many/i.test(m)) return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
+  if(/fetch|network|Failed to/i.test(m)) return 'Sem conexão com o servidor. Verifique a internet.';
+  return m||'Não foi possível concluir a operação.';};
+
+async function loadMe(user){
+  let p=null;
+  for(let i=0;i<4&&!p;i++){ const r=await SB.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(r.error) throw r.error; p=r.data; if(!p) await new Promise(res=>setTimeout(res,700)); }
+  if(!p) throw new Error('Perfil não encontrado. Confirme se o script supabase.sql foi executado.');
+  if(!p.ativo){ await SB.auth.signOut(); throw new Error('Seu acesso foi desativado. Procure o administrador do treinamento.'); }
+  const [pr,og]=await Promise.all([SB.from('progress').select('user_id,course,data,updated_at').eq('user_id',user.id), SB.from('org_settings').select('data').eq('id',1).maybeSingle()]);
+  if(pr.error) throw pr.error;
+  const u=fromRow(p,pr.data);
+  STORE={session:u.id,users:{[u.id]:u},org:(og.data&&og.data.data)||{}}; ADMIN_LOADED=false;
+  // alterações feitas sem conexão ficam no cache local e têm prioridade se forem mais novas
+  try{ const c=JSON.parse(localStorage.getItem(cacheKey())||'null'); if(c&&c.t>u._upd+1000&&c.cd){ u.cd={...u.cd,...c.cd}; u.settings={...u.settings,...(c.settings||{})}; if(c.cur) u.cur=c.cur; dirty=true; } }catch(e){}
+  // migração automática da versão sem banco (dados salvos neste navegador)
+  try{ if(!Object.keys(u.cd).length&&!localStorage.getItem('mestre-migrado-'+u.id)){ const o=JSON.parse(localStorage.getItem(OLDKEY)||'null'); const x=o&&o.users&&Object.values(o.users).find(v=>v&&String(v.email).toLowerCase()===u.email); if(x){ migrateUser(x); if(Object.keys(x.cd||{}).length){ u.cd=x.cd; u.settings={...u.settings,...(x.settings||{})}; dirty=true; setTimeout(()=>toast('Progresso salvo neste navegador foi importado para o banco de dados'),600);} } localStorage.setItem('mestre-migrado-'+u.id,'1'); } }catch(e){}
+  SB.from('profiles').update({last_login:new Date().toISOString()}).eq('id',u.id).then(()=>{});
+  lastSaved=u._upd||Date.now();
+  if(dirty) saveNow(true);
+}
+async function loadAllUsers(){
+  const [pp,pg]=await Promise.all([SB.from('profiles').select('*').order('nome'),SB.from('progress').select('user_id,course,data,updated_at')]);
+  if(pp.error) throw pp.error; if(pg.error) throw pg.error;
+  const me=U();
+  (pp.data||[]).forEach(p=>{ if(me&&p.id===me.id){ Object.assign(me,{role:p.role,courses:p.courses,access:p.access,ativo:p.ativo}); return; } STORE.users[p.id]=fromRow(p,(pg.data||[]).filter(r=>r.user_id===p.id)); });
+  ADMIN_LOADED=true;
+}
+let saveChain=Promise.resolve();
+function saveNow(silent){ saveChain=saveChain.then(()=>doSave(silent)).catch(()=>false); return saveChain; }
+async function doSave(silent){
+  const u=U(); if(!u||!SB) return false;
+  writeCache();
+  try{
+    const r1=await SB.from('profiles').update({nome:u.nome,cargo:u.cargo,settings:u.settings,cur:u.cur||null}).eq('id',u.id); if(r1.error) throw r1.error;
+    const rows=Object.entries(u.cd||{}).map(([c,d])=>({user_id:u.id,course:c,data:d,updated_at:new Date().toISOString()}));
+    if(rows.length){ const r2=await SB.from('progress').upsert(rows,{onConflict:'user_id,course'}); if(r2.error) throw r2.error; }
+    dirty=false; PENDING=false; lastSaved=Date.now(); updSave();
+    if(!silent) toast('Progresso salvo no banco de dados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    return true;
+  }catch(e){ PENDING=true; dirty=true; updSave(); if(!silent||!navigator.onLine) toast('Sem conexão com o banco de dados: o progresso ficou guardado neste aparelho e será enviado automaticamente.'); return false; }
+}
+async function saveOrg(){ const r=await SB.from('org_settings').update({data:STORE.org,updated_at:new Date().toISOString()}).eq('id',1); if(r.error) throw r.error; }
+async function saveProfileAdmin(x){ const r=await SB.from('profiles').update({role:x.role,courses:x.courses,access:x.access,ativo:x.ativo}).eq('id',x.id); if(r.error) throw r.error; }
+async function saveProgressOf(x){ const rows=Object.entries(x.cd||{}).map(([c,d])=>({user_id:x.id,course:c,data:d,updated_at:new Date().toISOString()})); if(!rows.length) return; const r=await SB.from('progress').upsert(rows,{onConflict:'user_id,course'}); if(r.error) throw r.error; }
+
+function mark(){dirty=true; updSave(); try{checkCerts();}catch(e){} writeCache(); clearTimeout(autoT); if(U()&&D().settings.autosave) autoT=setTimeout(()=>saveNow(true),1500);}
+function updSave(){const b=$('#saveBtn'); b.classList.toggle('dirty',dirty); $('#saveTxt').textContent=dirty?(PENDING?'Pendente':'Salvar'):'Salvo'; b.title=dirty?(PENDING?'Sem conexão: será enviado ao banco de dados':'Há alterações não salvas'):'Tudo salvo no banco de dados'+(lastSaved?' às '+new Date(lastSaved).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'');}
 let beforeSave=null;
 $('#saveBtn').onclick=()=>{ try{ if(beforeSave) beforeSave(); }catch(e){} saveNow(false); };
-window.addEventListener('beforeunload',e=>{if(dirty){writeLocal();}});
+window.addEventListener('beforeunload',e=>{ if(dirty){ writeCache(); e.preventDefault(); e.returnValue=''; } });
+window.addEventListener('online',()=>{ if(dirty&&U()) saveNow(true); });
 
-/* sincronização opcional quando a página está publicada no claude.ai */
-(async()=>{try{
-  if(!window.claude||!window.claude.use) return;
-  const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]); if(!db||!user) return;
-  const id=await user.id(); if(!id) return;
-  const ref=db.doc('data/users/'+id+'/trilha'); const snap=await ref.get(); CLOUD=ref;
-  if(snap.exists){const r=snap.data(); if(r&&r.updatedAt>(STORE.updatedAt||0)){const o=JSON.parse(r.store); if(o&&o.users){STORE=o; writeLocal(); applySettings(); route();}}}
-  else if(Object.keys(STORE.users).length) saveNow(true);
-}catch(e){}})();
-
-let toastT; function toast(t){const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2600);}
-
-/* senhas */
+let toastT; function toast(t){const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),3200);}
 const rnd=()=>Array.from(crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(12)):[...Array(12)].map(()=>Math.random()*256|0)).map(b=>b.toString(16).padStart(2,'0')).join('');
-async function hashPw(pw,salt){
-  try{const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pw)); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');}
-  catch(e){let h=5381; const s=salt+':'+pw; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return 'x'+(h>>>0).toString(16);}
-}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=t=>new Date(t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const ini=n=>String(n||'?').trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase();
@@ -2514,45 +2554,88 @@ function locked(n){
   setLv(n); main.innerHTML=`<div class="col"><div class="lockbox"><div class="ic">🔒</div><h2 style="margin-top:8px">Nível ${n} ainda não liberado</h2><p class="lead" style="margin:0 auto 18px">Este conteúdo não está liberado para o seu usuário. Peça ao administrador do treinamento para liberar o nível em Configurações › Usuários.</p><a class="btn" href="#home">Voltar à trilha</a></div></div>`;
 }
 
-/* =================== autenticação =================== */
+/* =================== autenticação (Supabase Auth) =================== */
+function authShell(card){
+  document.body.classList.add('noauth'); setLv(1);
+  main.innerHTML=`<div class="auth"><section class="hero"><div><h1>Treinamentos práticos para a sua equipe</h1><p class="lead">${Object.values(COURSES).map(c=>c.icon+' '+c.nome).join(' · ')}. Quatro níveis em cada treinamento, com legislação clicável, provas e certificados. Seu progresso fica salvo no banco de dados e acompanha você em qualquer dispositivo.</p><div class="cta"><a class="btn glass" href="#validar">Validar um certificado</a></div></div></section>
+  <div class="authcard">${card}</div></div>`;
+}
+function setupView(){
+  authShell(`<h2>Configuração pendente</h2><p class="muted">O aplicativo ainda não está ligado ao banco de dados.</p>
+  <ol style="font-size:15px"><li>Crie um projeto gratuito em supabase.com.</li><li>No SQL Editor, execute o arquivo <code>supabase.sql</code>.</li><li>Em Project Settings › API, copie a <b>Project URL</b> e a chave <b>anon public</b>.</li><li>Cole os dois valores no arquivo <code>config.js</code> e publique novamente.</li></ol>
+  <p class="muted">${window.supabase?'':'A biblioteca do Supabase não carregou: verifique a conexão com a internet. '}Veja o passo a passo completo no LEIA-ME.</p>`);
+}
 function authView(mode){
-  document.body.classList.add('noauth'); setLv(1); mode=mode||(Object.keys(STORE.users).length?'login':'signup');
-  const first=!Object.keys(STORE.users).length;
-  main.innerHTML=`<div class="auth"><section class="hero"><div><h1>Treinamentos práticos para a sua equipe</h1><p class="lead">${Object.values(COURSES).map(c=>c.icon+' '+c.nome).join(' · ')}. Quatro níveis em cada treinamento, com legislação clicável, provas e certificados. Cada pessoa tem seu próprio acesso e progresso.</p></div></section>
-  <div class="authcard"><h2>${mode==='login'?'Entrar':'Criar conta'}</h2><p class="muted">${first?'Nenhum usuário cadastrado ainda. O primeiro cadastro será o administrador do treinamento.':mode==='login'?'Use o e-mail e a senha cadastrados.':'Preencha seus dados para começar.'}</p>
-  ${first?'':`<div class="seg" role="group"><button type="button" data-m="login" aria-pressed="${mode==='login'}">Entrar</button><button type="button" data-m="signup" aria-pressed="${mode==='signup'}">Criar conta</button></div>`}
+  if(!SB) return setupView();
+  mode=mode||'login';
+  const titles={login:'Entrar',signup:'Criar conta',forgot:'Recuperar senha',reset:'Definir nova senha'};
+  authShell(`<h2>${titles[mode]}</h2><p class="muted">${mode==='login'?'Use o e-mail e a senha cadastrados.':mode==='signup'?'O primeiro cadastro do sistema se torna administrador do treinamento.':mode==='forgot'?'Enviaremos um link para você criar uma nova senha.':'Escolha a nova senha de acesso.'}</p>
+  ${mode==='login'||mode==='signup'?`<div class="seg" role="group"><button type="button" data-m="login" aria-pressed="${mode==='login'}">Entrar</button><button type="button" data-m="signup" aria-pressed="${mode==='signup'}">Criar conta</button></div>`:''}
   <div class="stackf" id="af">
-  ${mode==='signup'?`<label>Nome completo<input id="fNome" autocomplete="name" required></label><label>Cargo ou área<select id="fCargo"><option>Assistente fiscal</option><option>Analista fiscal</option><option>Contador</option><option>Estagiário</option><option>Gestor</option><option>Outro</option></select></label>`:''}
-  <label>E-mail<input id="fEmail" type="email" autocomplete="email" required></label>
-  <label>Senha<input id="fPw" type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" required></label>
-  ${mode==='signup'?'<label>Confirmar senha<input id="fPw2" type="password" autocomplete="new-password"></label><span class="muted">Mínimo de 4 caracteres.</span>':''}
+  ${mode==='signup'?`<label>Nome completo<input id="fNome" autocomplete="name"></label><label>Cargo ou área<select id="fCargo"><option>Assistente fiscal</option><option>Analista fiscal</option><option>Analista de DP</option><option>Assistente contábil</option><option>Contador</option><option>Estagiário</option><option>Gestor</option><option>Outro</option></select></label>`:''}
+  ${mode!=='reset'?`<label>E-mail<input id="fEmail" type="email" autocomplete="email"></label>`:''}
+  ${mode!=='forgot'?`<label>${mode==='reset'?'Nova senha':'Senha'}<input id="fPw" type="password" autocomplete="${mode==='login'?'current-password':'new-password'}"></label>`:''}
+  ${mode==='signup'||mode==='reset'?'<label>Confirmar senha<input id="fPw2" type="password" autocomplete="new-password"></label><span class="muted">Mínimo de 6 caracteres.</span>':''}
   <div class="msg" id="aMsg"></div>
-  <button class="btn" id="aGo" type="button" style="justify-content:center">${mode==='login'?'Entrar':'Criar conta e começar'}</button>
-  ${mode==='login'?'<span class="muted">Esqueceu a senha? Peça ao administrador para redefini-la.</span>':''}
-  </div><p class="muted" style="margin:14px 0 0">Os dados ficam salvos neste navegador${CLOUD?' e sincronizados com a sua conta do claude.ai':''}. Use Configurações › Dados para fazer backup.</p></div></div>`;
-  main.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>authView(b.dataset.m));
-  const err=t=>{const m=$('#aMsg'); m.className='msg err'; m.textContent=t;};
+  <button class="btn" id="aGo" type="button" style="justify-content:center">${{login:'Entrar',signup:'Criar conta e começar',forgot:'Enviar link de recuperação',reset:'Salvar nova senha'}[mode]}</button>
+  ${mode==='login'?'<button class="linkbtn" type="button" data-m="forgot">Esqueci minha senha</button>':''}
+  ${mode==='forgot'?'<button class="linkbtn" type="button" data-m="login">Voltar para entrar</button>':''}
+  </div>`);
+  main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>authView(b.dataset.m));
+  const msg=(t,ok)=>{const m=$('#aMsg'); m.className='msg '+(ok?'ok':'err'); m.textContent=t;};
+  const busy=on=>{const b=$('#aGo'); b.disabled=on; b.style.opacity=on?.6:1;};
   const go=async()=>{
-    const email=$('#fEmail').value.trim().toLowerCase(), pw=$('#fPw').value;
-    if(!/^\S+@\S+\.\S+$/.test(email)) return err('Informe um e-mail válido.');
-    if(mode==='login'){
-      const u=Object.values(STORE.users).find(x=>x.email===email); if(!u) return err('Não há usuário com este e-mail. Crie uma conta.');
-      if(await hashPw(pw,u.salt)!==u.hash) return err('Senha incorreta.');
-      STORE.session=u.id; u.lastLogin=Date.now(); await saveNow(true); toast('Bem-vindo de volta, '+u.nome.split(' ')[0]); location.hash='#home'; route();
-    } else {
-      const nome=$('#fNome').value.trim(); if(nome.length<3) return err('Informe o nome completo.');
-      if(Object.values(STORE.users).some(x=>x.email===email)) return err('Este e-mail já está cadastrado. Use a opção Entrar.');
-      if(pw.length<4) return err('A senha precisa ter pelo menos 4 caracteres.');
-      if(pw!==$('#fPw2').value) return err('As senhas não conferem.');
-      const id='u'+rnd().slice(0,10), salt=rnd(), data=newData();
-      if(first){try{const o=JSON.parse(localStorage.getItem(OLDKEY)||'null'); if(o){data.done=o.done||{}; data.quiz=o.quiz||{};}}catch(e){}}
-      STORE.users[id]={id,nome,email,cargo:$('#fCargo').value,role:first?'admin':'aluno',access:[1,2,3,4],salt,hash:await hashPw(pw,salt),created:Date.now(),lastLogin:Date.now(),data};
-      STORE.session=id; await saveNow(true); toast('Conta criada. Bons estudos!'); location.hash='#home'; route();
-    }
+    const email=$('#fEmail')?$('#fEmail').value.trim().toLowerCase():'', pw=$('#fPw')?$('#fPw').value:'';
+    if(mode!=='reset'&&!/^\S+@\S+\.\S+$/.test(email)) return msg('Informe um e-mail válido.');
+    busy(true);
+    try{
+      if(mode==='login'){
+        const {data,error}=await SB.auth.signInWithPassword({email,password:pw}); if(error) throw error;
+        await loadMe(data.user); toast('Bem-vindo, '+U().nome.split(' ')[0]); location.hash='#home'; route();
+      } else if(mode==='signup'){
+        const nome=$('#fNome').value.trim(); if(nome.length<3){busy(false); return msg('Informe o nome completo.');}
+        if(pw.length<6){busy(false); return msg('A senha precisa ter pelo menos 6 caracteres.');}
+        if(pw!==$('#fPw2').value){busy(false); return msg('As senhas não conferem.');}
+        const {data,error}=await SB.auth.signUp({email,password:pw,options:{data:{nome,cargo:$('#fCargo').value},emailRedirectTo:BASE_URL}}); if(error) throw error;
+        if(!data.session){ busy(false); return msg('Cadastro recebido! Enviamos um e-mail de confirmação para '+email+'. Clique no link e depois entre com sua senha.',true); }
+        await loadMe(data.user); toast('Conta criada. Bons estudos!'); location.hash='#home'; route();
+      } else if(mode==='forgot'){
+        const {error}=await SB.auth.resetPasswordForEmail(email,{redirectTo:BASE_URL}); if(error) throw error;
+        busy(false); return msg('Se o e-mail estiver cadastrado, você receberá um link para criar a nova senha.',true);
+      } else if(mode==='reset'){
+        if(pw.length<6){busy(false); return msg('A senha precisa ter pelo menos 6 caracteres.');}
+        if(pw!==$('#fPw2').value){busy(false); return msg('As senhas não conferem.');}
+        const {data,error}=await SB.auth.updateUser({password:pw}); if(error) throw error;
+        RECOVERY=false; await loadMe(data.user); toast('Senha alterada com sucesso'); history.replaceState(null,'',BASE_URL+'#home'); route();
+      }
+    }catch(e){ busy(false); msg(ptErr(e)); }
   };
   $('#aGo').onclick=go; $('#af').addEventListener('keydown',e=>{if(e.key==='Enter') go();});
 }
-function logout(){ if(dirty) writeLocal(); STORE.session=null; saveNow(true); location.hash='#home'; route(); }
+async function logout(){
+  try{ if(beforeSave) beforeSave(); }catch(e){}
+  if(dirty) await saveNow(true);
+  try{ await SB.auth.signOut(); }catch(e){}
+  STORE={session:null,users:{},org:{}}; dirty=false; ADMIN_LOADED=false; updSave();
+  location.hash='#login'; route();
+}
+function validarView(){
+  const logged=!!U();
+  if(!logged) document.body.classList.add('noauth'); else { setTab(''); renderSide(); }
+  setLv(2);
+  main.innerHTML=`<div class="col" style="max-width:720px;margin:0 auto"><header class="lhead"><div class="meta"><span class="chip">Consulta pública</span></div><h1>Validar certificado</h1><p class="lead" style="margin:0">Digite o código de verificação impresso no certificado (ex.: MT-F1-0A1B2C3).</p></header>
+  <div class="search"><input id="vq" placeholder="Código do certificado" aria-label="Código do certificado" autocomplete="off"><button class="btn" id="vGo" type="button">Validar</button></div><div id="vout"></div>
+  <p style="margin-top:20px"><a href="${logged?'#home':'#login'}">${logged?'Voltar ao treinamento':'Entrar no treinamento'}</a></p></div>`;
+  const run=async()=>{ const c=$('#vq').value.trim(); if(!c) return; const out=$('#vout'); out.innerHTML='<p class="muted">Consultando…</p>';
+    if(!SB){ out.innerHTML='<div class="note erro"><div class="ni">✕</div><p><b>Indisponível</b>O aplicativo ainda não está ligado ao banco de dados.</p></div>'; return; }
+    const {data,error}=await SB.rpc('verificar_certificado',{p_codigo:c});
+    if(error){ out.innerHTML=`<div class="note erro"><div class="ni">✕</div><p><b>Erro na consulta</b>${esc(ptErr(error))}</p></div>`; return; }
+    const r=(data||[])[0];
+    out.innerHTML=r?`<div class="note dica"><div class="ni">✓</div><p><b>Certificado válido</b>Emitido para <strong>${esc(r.nome)}</strong> no treinamento <strong>${esc((COURSES[r.curso]||{}).nome||r.curso)}</strong>, ${r.nivel==='0'?'trilha completa':'nível '+esc(r.nivel)}, com nota ${esc(r.nota)}%, em ${new Date(r.emitido_em).toLocaleDateString('pt-BR')}.</p></div>`
+      :`<div class="note erro"><div class="ni">✕</div><p><b>Código não encontrado</b>Confira se o código foi digitado corretamente, incluindo os hífens.</p></div>`; };
+  $('#vGo').onclick=run; $('#vq').addEventListener('keydown',e=>{if(e.key==='Enter') run();});
+  const pre=(location.hash.split('/')[1]||''); if(pre){ $('#vq').value=decodeURIComponent(pre); run(); }
+}
 
 /* =================== páginas =================== */
 function home(){
@@ -2713,12 +2796,13 @@ function cfopView(){
 /* =================== configurações =================== */
 function config(sec){
   setTab(''); renderSide(); setLv(3);
+  if(sec==='usuarios'&&isAdmin()&&!ADMIN_LOADED){ main.innerHTML='<div class="col"><p class="muted">Carregando usuários do banco de dados…</p></div>'; loadAllUsers().then(()=>{ if((location.hash||'').startsWith('#config/usuarios')) config('usuarios'); }).catch(e=>{ main.innerHTML=`<div class="col"><div class="note erro"><div class="ni">✕</div><p><b>Não foi possível carregar os usuários</b>${esc(ptErr(e))}</p></div></div>`; }); return; }
   const secs=[['perfil','Perfil'],['aparencia','Aparência'],['estudo','Estudo e provas'],['dados','Dados e backup'],...(isAdmin()?[['usuarios','Usuários'],['certificado','Certificado']]:[]),['sair','Sair']];
   sec=secs.some(s=>s[0]===sec)?sec:'perfil';
   const u=U(), s=D().settings;
   const body={
   perfil:()=>`<h2>Perfil</h2><p class="muted">Conta criada em ${fmtDate(u.created)} · <span class="pill ${u.role==='admin'?'adm':''}">${u.role==='admin'?'Administrador':'Aluno'}</span></p>
-   <div class="grid"><label>Nome completo<input id="cNome" value="${esc(u.nome)}"></label><label>E-mail<input id="cEmail" type="email" value="${esc(u.email)}"></label><label>Cargo ou área<input id="cCargo" value="${esc(u.cargo)}"></label></div>
+   <div class="grid"><label>Nome completo<input id="cNome" value="${esc(u.nome)}"></label><label>E-mail (login)<input id="cEmail" type="email" value="${esc(u.email)}" readonly style="opacity:.7"></label><label>Cargo ou área<input id="cCargo" value="${esc(u.cargo)}"></label></div>
    <h3>Trocar senha</h3><div class="grid"><label>Senha atual<input id="cPw0" type="password" autocomplete="current-password"></label><label>Nova senha<input id="cPw1" type="password" autocomplete="new-password"></label><label>Confirmar nova senha<input id="cPw2" type="password" autocomplete="new-password"></label></div>
    <div class="msg" id="cMsg"></div><div class="actions"><button class="btn" id="cSave">Salvar perfil</button></div>`,
   aparencia:()=>`<h2>Aparência</h2><div class="grid"><label>Tema<select id="sTheme"><option value="auto">Automático (segue o sistema)</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label><label>Tamanho do texto<select id="sFont"><option value="normal">Normal</option><option value="big">Grande</option></select></label></div>
@@ -2730,67 +2814,76 @@ function config(sec){
    <div class="actions"><button class="btn" id="cSave">Salvar configurações</button></div>`,
   dados:()=>{const nd=Object.keys(D().done).length, ne=Object.values(D().exams).reduce((a,b)=>a+b.length,0), nn=Object.keys(D().notes).length;
    return `<h2>Dados e backup</h2><p class="muted">Treinamento atual: ${COURSES[CUR].nome}</p>${tbl(['Seu conteúdo','>Quantidade'],[['Aulas concluídas',nd+' de '+ALL.length],['Provas realizadas',ne],['Anotações',nn],['Último salvamento',lastSaved?fmtDate(lastSaved):'—']])}
-   <p class="muted">Os dados ficam neste navegador${CLOUD?' e na sua conta do claude.ai':''}. Exporte um backup para guardar ou levar para outro computador.</p>
+   <p class="muted">Seus dados ficam salvos no banco de dados do treinamento e aparecem em qualquer computador ou celular em que você entrar. O backup é opcional; use a importação para trazer o progresso da versão antiga, que salvava só no navegador.</p>
    <div class="actions" style="border:0;padding-top:0"><button class="btn" id="dExp">Exportar backup (.json)</button><label class="btn ghost" style="cursor:pointer">Importar backup<input type="file" id="dImp" accept="application/json,.json" hidden></label></div>
    <div class="msg" id="dMsg"></div>
    <h3>Zona de cuidado</h3><p class="muted">Apaga aulas concluídas, exercícios, provas, anotações e certificados do seu usuário no treinamento ${COURSES[CUR].nome}. Não pode ser desfeito.</p><button class="btn danger" id="dReset">Apagar meu progresso</button>`;},
   usuarios:()=>{const us=Object.values(STORE.users);
-   return `<h2>Usuários</h2><p class="muted">${us.length} usuário(s) cadastrado(s) neste navegador. Escolha quais treinamentos aplicar a cada aluno, os níveis liberados em cada um, e acompanhe o progresso.</p>
-   <div class="lvchk" style="margin:6px 0 14px"><span class="muted" style="align-self:center">Treinamentos para novos cadastros:</span>${Object.values(COURSES).map(c=>`<label><input type="checkbox" data-defc="${c.id}" ${(STORE.defCourses||Object.keys(COURSES)).includes(c.id)?'checked':''}>${c.icon} ${c.nome}</label>`).join('')}</div>
+   return `<h2>Usuários</h2><p class="muted">${us.length} usuário(s) cadastrado(s) no banco de dados. Escolha quais treinamentos aplicar a cada aluno, os níveis liberados em cada um, e acompanhe o progresso.</p>
+   <div class="lvchk" style="margin:6px 0 14px"><span class="muted" style="align-self:center">Treinamentos para novos cadastros:</span>${Object.values(COURSES).map(c=>`<label><input type="checkbox" data-defc="${c.id}" ${(STORE.org.defCourses||Object.keys(COURSES)).includes(c.id)?'checked':''}>${c.icon} ${c.nome}</label>`).join('')}</div>
    ${us.map(x=>{migrateUser(x); const summ=Object.values(COURSES).map(c=>{const d=x.cd[c.id]||newCD(); return `${c.curto}: ${Object.keys(d.done||{}).length} aulas, ${Object.keys(d.certs||{}).length} cert.`;}).join(' · ');
-   return `<div class="urow" data-u="${x.id}"><div><b>${esc(x.nome)}</b> <span class="pill ${x.role==='admin'?'adm':''}">${x.role==='admin'?'Administrador':'Aluno'}</span><div class="muted">${esc(x.email)} · ${esc(x.cargo||'')}</div><div class="muted">${summ}${x.lastLogin?' · último acesso '+fmtDate(x.lastLogin):''}</div></div>
+   return `<div class="urow" data-u="${x.id}" style="${x.ativo===false?'opacity:.55':''}"><div><b>${esc(x.nome)}</b> <span class="pill ${x.role==='admin'?'adm':''}">${x.role==='admin'?'Administrador':'Aluno'}</span>${x.ativo===false?' <span class="pill">Desativado</span>':''}<div class="muted">${esc(x.email)} · ${esc(x.cargo||'')}</div><div class="muted">${summ}${x.lastLogin?' · último acesso '+fmtDate(x.lastLogin):''}</div></div>
    <div style="display:flex;flex-direction:column;gap:6px">${x.role==='admin'?'<span class="muted">Acesso total a todos os treinamentos</span>':Object.values(COURSES).map(c=>`<div class="lvchk" aria-label="Acesso ao treinamento ${c.nome}"><label class="crsl"><input type="checkbox" data-crs="${c.id}" ${x.courses.includes(c.id)?'checked':''}><b>${c.icon} ${c.curto}</b></label>${[1,2,3,4].map(n=>`<label><input type="checkbox" data-lv="${c.id}:${n}" ${(x.access[c.id]||[]).includes(n)?'checked':''}>N${n}</label>`).join('')}</div>`).join('')}</div>
-   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${x.id!==u.id?`<select data-role aria-label="Perfil"><option value="aluno" ${x.role==='aluno'?'selected':''}>Aluno</option><option value="admin" ${x.role==='admin'?'selected':''}>Administrador</option></select><input data-npw type="password" placeholder="Nova senha" style="width:130px" aria-label="Nova senha"><button class="btn ghost" data-del type="button">Excluir</button>`:'<span class="muted">Você</span>'}</div></div>`;}).join('')}
-   <div class="msg" id="uMsg"></div><div class="actions"><button class="btn" id="uSave">Salvar usuários</button></div>`;},
+   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${x.id!==u.id?`<select data-role aria-label="Perfil"><option value="aluno" ${x.role==='aluno'?'selected':''}>Aluno</option><option value="admin" ${x.role==='admin'?'selected':''}>Administrador</option></select><label class="lvchk" style="margin:0"><label style="margin:0"><input type="checkbox" data-ativo ${x.ativo!==false?'checked':''}>Ativo</label></label><button class="btn ghost" data-reset type="button" title="Envia um e-mail para o usuário criar nova senha">Enviar link de senha</button>`:'<span class="muted">Você</span>'}</div></div>`;}).join('')}
+   <div class="msg" id="uMsg"></div><div class="actions"><button class="btn" id="uSave">Salvar usuários</button><button class="btn ghost" id="uReload" type="button">Atualizar lista</button></div>
+   <p class="muted">Para excluir definitivamente uma conta, desative-a aqui e depois apague o usuário no painel do Supabase (Authentication › Users).</p>`;},
   certificado:()=>{const o=ORG(); return `<h2>Certificado</h2><p class="muted">Dados que aparecem em todos os certificados emitidos.</p>
    <div class="grid"><label>Empresa ou instituição<input id="oEmp" value="${esc(o.empresa)}"></label><label>Responsável que assina<input id="oResp" value="${esc(o.resp)}"></label><label>Cargo do responsável<input id="oCargo" value="${esc(o.cargo)}"></label></div>
    <h3>Carga horária por nível</h3>${Object.values(COURSES).map(c=>`<p class="muted" style="margin:14px 0 0"><b>${c.icon} ${c.nome}</b></p><div class="grid">${c.levels.map(L=>`<label>Nível ${L.n} · ${L.title}<input type="number" min="1" max="200" data-h="${c.id}:${L.n}" value="${o.horas[c.id][L.n]}"></label>`).join('')}</div>`).join('')}
    <div class="actions"><button class="btn" id="oSave">Salvar configurações</button><a class="btn ghost" href="#cert">Ver certificados</a></div>`;},
-  sair:()=>`<h2>Sair</h2><p>Encerrar a sessão de <b>${esc(u.nome)}</b> neste navegador. ${dirty?'As alterações pendentes serão salvas antes.':''}</p><div class="actions" style="border:0"><button class="btn" id="oOut">Sair da conta</button><button class="btn ghost" id="oSwitch">Entrar com outro usuário</button></div>`
+  sair:()=>`<h2>Sair</h2><p>Encerrar a sessão de <b>${esc(u.nome)}</b> neste dispositivo. ${dirty?'As alterações pendentes serão salvas antes.':'Seu progresso já está salvo no banco de dados.'}</p><div class="actions" style="border:0"><button class="btn" id="oOut">Sair da conta</button></div>`
   };
   main.innerHTML=`<div class="col" style="max-width:1040px"><header class="lhead"><div class="meta"><span class="chip">${esc(u.nome)}</span></div><h1>Configurações</h1></header>
   <div class="cfgwrap"><nav class="cfgnav" aria-label="Seções das configurações">${secs.map(([k,t])=>`<button type="button" data-s="${k}" aria-current="${k===sec}">${t}</button>`).join('')}</nav><section class="cfg" id="cfgBody">${body[sec]()}</section></div></div>`;
   main.querySelectorAll('.cfgnav button').forEach(b=>b.onclick=()=>location.hash='#config/'+b.dataset.s);
   const msg=(id,t,ok)=>{const m=$('#'+id); m.className='msg '+(ok?'ok':'err'); m.textContent=t;};
   if(sec==='perfil') $('#cSave').onclick=async()=>{
-    const nome=$('#cNome').value.trim(), email=$('#cEmail').value.trim().toLowerCase();
+    const nome=$('#cNome').value.trim();
     if(nome.length<3) return msg('cMsg','Informe o nome completo.');
-    if(!/^\S+@\S+\.\S+$/.test(email)) return msg('cMsg','Informe um e-mail válido.');
-    if(Object.values(STORE.users).some(x=>x.email===email&&x.id!==u.id)) return msg('cMsg','Este e-mail já pertence a outro usuário.');
     const p0=$('#cPw0').value,p1=$('#cPw1').value;
-    if(p1){ if(await hashPw(p0,u.salt)!==u.hash) return msg('cMsg','A senha atual está incorreta.'); if(p1.length<4) return msg('cMsg','A nova senha precisa ter pelo menos 4 caracteres.'); if(p1!==$('#cPw2').value) return msg('cMsg','As novas senhas não conferem.'); u.salt=rnd(); u.hash=await hashPw(p1,u.salt); }
-    u.nome=nome; u.email=email; u.cargo=$('#cCargo').value.trim(); await saveNow(true); applySettings(); config('perfil'); toast(p1?'Perfil e senha salvos':'Perfil salvo');
+    if(p1){ if(p1.length<6) return msg('cMsg','A nova senha precisa ter pelo menos 6 caracteres.'); if(p1!==$('#cPw2').value) return msg('cMsg','As novas senhas não conferem.');
+      const a=await SB.auth.signInWithPassword({email:u.email,password:p0}); if(a.error) return msg('cMsg','A senha atual está incorreta.');
+      const b=await SB.auth.updateUser({password:p1}); if(b.error) return msg('cMsg',ptErr(b.error)); }
+    u.nome=nome; u.cargo=$('#cCargo').value.trim(); const ok=await saveNow(true); applySettings(); config('perfil'); toast(ok?(p1?'Perfil e senha salvos':'Perfil salvo'):'Sem conexão: perfil será enviado quando a conexão voltar');
   };
   if(sec==='aparencia'){ $('#sTheme').value=s.theme; $('#sFont').value=s.font; $('#cSave').onclick=async()=>{s.theme=$('#sTheme').value; s.font=$('#sFont').value; s.calm=$('#sCalm').checked; applySettings(); await saveNow(true); toast('Configurações salvas');}; }
   if(sec==='estudo'){ $('#sPass').value=s.passPct; $('#sMin').value=s.examMin; $('#cSave').onclick=async()=>{s.passPct=+$('#sPass').value; s.examMin=+$('#sMin').value; s.shuffle=$('#sShuf').checked; s.autosave=$('#sAuto').checked; await saveNow(true); renderSide(); toast('Configurações salvas');}; }
   if(sec==='dados'){
     $('#dExp').onclick=async()=>{
-      const payload=isAdmin()?STORE:{v:2,updatedAt:Date.now(),session:null,users:{[u.id]:u}};
+      if(isAdmin()&&!ADMIN_LOADED){ try{ await loadAllUsers(); }catch(e){} }
+      const payload={v:3,exportedAt:Date.now(),users:isAdmin()?STORE.users:{[u.id]:u}};
       const json=JSON.stringify(payload,null,2), name='mestre-treinamento-backup-'+new Date().toISOString().slice(0,10)+'.json';
       try{const dl=window.claude&&window.claude.use?await claude.use('downloads'):null; if(dl){await dl.save({filename:name,data:json}); msg('dMsg','Backup gerado.',true); return;}}catch(e){if(e&&e.code&&e.code!=='unavailable'){msg('dMsg','O download foi cancelado.');return;}}
       const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); msg('dMsg','Backup gerado: '+name,true);
     };
     $('#dImp').onchange=e=>{const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{try{
-      const o=JSON.parse(r.result); if(!o||!o.users) throw 0; let n=0;
-      Object.values(o.users).forEach(x=>{ if(!x||!x.id||!x.email) return; if(!isAdmin()&&x.id!==u.id) return; const cur=STORE.users[x.id];
-        if(cur&&x.id===u.id){migrateUser(x); cur.cd=x.cd||cur.cd;} else STORE.users[x.id]={...x,role:x.role==='admin'&&!isAdmin()?'aluno':x.role}; n++;});
-      if(!n) throw 0; await saveNow(true); config('dados'); msg('dMsg',n+' usuário(s) importado(s) do backup.',true);
-    }catch(err){msg('dMsg','Arquivo inválido. Selecione um backup exportado pelo Mestre - Treinamento.');}}; r.readAsText(f);};
+      const o=JSON.parse(r.result); if(!o||!o.users) throw 0;
+      if(isAdmin()&&!ADMIN_LOADED) await loadAllUsers();
+      const byMail={}; Object.values(STORE.users).forEach(x=>byMail[String(x.email).toLowerCase()]=x);
+      let n=0; const miss=[];
+      for(const x of Object.values(o.users)){ if(!x||!x.email) continue; migrateUser(x); const t=byMail[String(x.email).toLowerCase()];
+        if(!t){ miss.push(x.email); continue; } if(!isAdmin()&&t.id!==u.id) continue;
+        t.cd={...t.cd,...(x.cd||{})}; if(t.id===u.id){ await saveNow(true); } else { await saveProgressOf(t); } n++; }
+      config('dados'); msg('dMsg',`${n} usuário(s) atualizado(s) a partir do backup.${miss.length?' Sem cadastro no banco (peça para criarem a conta e importe de novo): '+miss.join(', '):''}`,!!n);
+    }catch(err){msg('dMsg',err&&err.message?ptErr(err):'Arquivo inválido. Selecione um backup exportado pelo Mestre - Treinamento.');}}; r.readAsText(f);};
     let rs=false; $('#dReset').onclick=async()=>{ if(!rs){rs=true; $('#dReset').textContent='Clique de novo para confirmar'; return;} u.cd[CUR]=newCD(); await saveNow(true); config('dados'); toast('Progresso apagado');};
   }
   if(sec==='usuarios'){
-    main.querySelectorAll('[data-del]').forEach(b=>{let c=false; b.onclick=()=>{ if(!c){c=true; b.textContent='Confirmar'; b.classList.add('danger'); b.classList.remove('ghost'); return;} delete STORE.users[b.closest('.urow').dataset.u]; saveNow(true); config('usuarios'); toast('Usuário excluído');};});
+    main.querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{ const x=STORE.users[b.closest('.urow').dataset.u]; b.disabled=true; const {error}=await SB.auth.resetPasswordForEmail(x.email,{redirectTo:BASE_URL}); b.disabled=false; if(error) msg('uMsg',ptErr(error)); else { msg('uMsg','Link de redefinição enviado para '+x.email+'.',true); } });
+    $('#uReload').onclick=()=>{ ADMIN_LOADED=false; config('usuarios'); };
     $('#uSave').onclick=async()=>{
       for(const row of main.querySelectorAll('.urow')){const x=STORE.users[row.dataset.u]; if(!x) continue;
         const ch=[...row.querySelectorAll('[data-lv]')]; if(ch.length){ x.access={}; Object.keys(COURSES).forEach(cid=>x.access[cid]=ch.filter(c=>c.checked&&c.dataset.lv.startsWith(cid+':')).map(c=>+c.dataset.lv.split(':')[1])); x.courses=[...row.querySelectorAll('[data-crs]')].filter(c=>c.checked).map(c=>c.dataset.crs); if(x.cur&&!x.courses.includes(x.cur)) x.cur=null; }
         const rl=row.querySelector('[data-role]'); if(rl) x.role=rl.value;
-        const np=row.querySelector('[data-npw]'); if(np&&np.value){ if(np.value.length<4){msg('uMsg','A nova senha de '+x.nome+' precisa ter pelo menos 4 caracteres.'); return;} x.salt=rnd(); x.hash=await hashPw(np.value,x.salt);} }
-      STORE.defCourses=[...main.querySelectorAll('[data-defc]')].filter(c=>c.checked).map(c=>c.dataset.defc);
-      await saveNow(true); config('usuarios'); toast('Usuários salvos');
+        const at=row.querySelector('[data-ativo]'); if(at) x.ativo=at.checked;
+        if(x.id!==U().id){ try{ await saveProfileAdmin(x); }catch(e){ msg('uMsg','Erro ao salvar '+x.nome+': '+ptErr(e)); return; } } }
+      STORE.org.defCourses=[...main.querySelectorAll('[data-defc]')].filter(c=>c.checked).map(c=>c.dataset.defc);
+      try{ await saveOrg(); }catch(e){ msg('uMsg',ptErr(e)); return; }
+      config('usuarios'); toast('Usuários salvos no banco de dados');
     };
   }
-  if(sec==='certificado') $('#oSave').onclick=async()=>{const o=ORG(); o.empresa=$('#oEmp').value.trim()||ORG_DEF.empresa; o.resp=$('#oResp').value.trim()||ORG_DEF.resp; o.cargo=$('#oCargo').value.trim(); main.querySelectorAll('[data-h]').forEach(i=>{const [c,n]=i.dataset.h.split(':'); o.horas[c][n]=Math.max(1,+i.value||ORG_DEF.horas[c][n]);}); await saveNow(true); toast('Configurações do certificado salvas');};
-  if(sec==='sair'){ $('#oOut').onclick=logout; $('#oSwitch').onclick=()=>{logout(); setTimeout(()=>authView('login'),0);}; }
+  if(sec==='certificado') $('#oSave').onclick=async()=>{const o=ORG(); o.empresa=$('#oEmp').value.trim()||ORG_DEF.empresa; o.resp=$('#oResp').value.trim()||ORG_DEF.resp; o.cargo=$('#oCargo').value.trim(); main.querySelectorAll('[data-h]').forEach(i=>{const [c,n]=i.dataset.h.split(':'); o.horas[c][n]=Math.max(1,+i.value||ORG_DEF.horas[c][n]);}); try{ await saveOrg(); toast('Configurações do certificado salvas'); }catch(e){ toast(ptErr(e)); } };
+  if(sec==='sair'){ $('#oOut').onclick=logout; }
 }
 
 /* =================== escolha de treinamento =================== */
@@ -2814,7 +2907,10 @@ function route(){
   if(EXAM){clearInterval(EXAM.timer); EXAM=null;}
   beforeSave=null;
   applySettings(); updSave();
-  if(!U()){ return authView(); }
+  const hh=(location.hash||'').slice(1);
+  if(hh.startsWith('validar')) return validarView();
+  if(RECOVERY) return authView('reset');
+  if(!U()){ return authView(hh==='signup'?'signup':'login'); }
   document.body.classList.remove('noauth');
   const u=U(); migrateUser(u);
   const h=location.hash.slice(1)||'home'; const [a,b]=h.split('/');
@@ -2829,8 +2925,19 @@ function route(){
 window.addEventListener('hashchange',route);
 $('#menuBtn').onclick=()=>{const o=side.classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded',o);};
 setInterval(()=>{ if(dirty&&U()&&D().settings.autosave) saveNow(true); },30000);
-route();
-</script><script>
+let RECOVERY=false;
+async function boot(){
+  if(!SB){ route(); return; }
+  main.innerHTML='<div class="col"><p class="muted" style="padding:40px 0">Conectando ao banco de dados…</p></div>'; document.body.classList.add('noauth');
+  SB.auth.onAuthStateChange((ev,session)=>{ if(ev==='PASSWORD_RECOVERY'){ RECOVERY=true; route(); } if(ev==='USER_UPDATED'&&RECOVERY){ RECOVERY=false; } });
+  try{ const {data}=await SB.auth.getSession(); if(data&&data.session&&!/type=recovery/.test(location.hash)){ await loadMe(data.session.user); } }catch(e){ setTimeout(()=>toast(ptErr(e)),300); }
+  if(/type=recovery/.test(location.hash)) RECOVERY=true;
+  if(/access_token|type=/.test(location.hash)&&!RECOVERY) history.replaceState(null,'',BASE_URL+'#home');
+  route();
+}
+boot();
+</script>
+<script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
