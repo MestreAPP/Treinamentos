@@ -422,6 +422,48 @@ body.noauth .crsbtn{display:none}
 .donebadge{display:inline-flex;align-items:center;gap:6px;background:var(--goodt);color:var(--good);font-weight:750;padding:9px 16px;border-radius:999px}
 .linkbtn{border:0;background:none;color:var(--ink3);font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
 .linkbtn:hover{color:var(--bad)}
+/* guia (avatar) */
+.guia{display:grid;grid-template-columns:92px minmax(0,1fr);gap:16px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:0 0 26px;box-shadow:var(--sh);position:relative;animation:guiaIn .35s ease}
+@keyframes guiaIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.guia .av{width:92px;height:92px}
+.guia .bub{position:relative;background:var(--lvt);border-radius:14px;padding:12px 16px}
+.guia .bub::before{content:"";position:absolute;left:-8px;top:26px;border:8px solid transparent;border-left:0;border-right-color:var(--lvt)}
+.guia .bub small{display:block;font-weight:700;color:var(--lv);font-size:12.5px;margin-bottom:2px}
+.guia .bub p{margin:0 0 6px;font-size:15.5px;line-height:1.55}
+.guia .bub p:last-child{margin:0}
+.guia .bub ul{margin:4px 0 6px;padding-left:18px;font-size:14.5px}
+.guia .gact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.guia .gact button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;font-size:13.5px;font-weight:650;cursor:pointer}
+.guia .gact button.pri{background:var(--lv);border-color:var(--lv);color:#fff}
+.guia .gact button:hover{filter:brightness(1.05)}
+.hero .guia{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);box-shadow:none;margin:22px 0 0}
+.hero .guia .bub{background:rgba(255,255,255,.12);color:#fff}
+.hero .guia .bub::before{border-right-color:rgba(255,255,255,.12)}
+.hero .guia .bub small{color:#C9D0F2}
+.hero .guia .gact button{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
+.mav .eye{transform-box:fill-box;transform-origin:center;animation:blink 5s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.mav .mouthT{display:none}
+.mav.talking .mouthS{display:none}
+.mav.talking .mouthT{display:block;transform-box:fill-box;transform-origin:center;animation:talk .22s infinite alternate}
+@keyframes talk{from{transform:scaleY(.35)}to{transform:scaleY(1.1)}}
+.mav .hand{transform-box:fill-box;transform-origin:20% 90%}
+.mav.talking .hand{animation:wave 1.2s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-12deg)}}
+.guiafab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;border:3px solid var(--surface);background:var(--lvt);box-shadow:var(--sh2);cursor:pointer;z-index:45;padding:0;display:grid;place-items:center}
+.guiafab .mav{width:56px;height:56px}
+.guiafab::after{content:"?";position:absolute;top:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:var(--lv);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center;border:2px solid var(--surface)}
+.guiafab.hid{display:none}
+@media (max-width:640px){.guia{grid-template-columns:60px minmax(0,1fr);padding:12px}.guia .av{width:60px;height:60px}.guia .bub::before{top:18px}.guiafab{width:54px;height:54px}.guiafab .mav{width:48px;height:48px}}
+@media (prefers-reduced-motion: reduce){.mav *{animation:none!important}}
+body.calm .mav *{animation:none!important}
+@media print{.guia,.guiafab{display:none!important}}
+.guia .gvoz{display:none;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);gap:10px;flex-wrap:wrap;align-items:end}
+.guia .gvoz.open{display:flex}
+.guia .gvoz label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:650;color:var(--ink2);flex:1 1 200px}
+.guia .gvoz select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:7px 10px;font-size:14px}
+.guia .gvoz small{flex-basis:100%;color:var(--ink3);font-size:12.5px}
+.hero 
 </style>
 </head>
 <body>
@@ -2808,7 +2850,7 @@ function cfopView(){
 function config(sec){
   setTab(''); renderSide(); setLv(3);
   if(sec==='usuarios'&&isAdmin()&&!ADMIN_LOADED){ main.innerHTML='<div class="col"><p class="muted">Carregando usuários do banco de dados…</p></div>'; loadAllUsers().then(()=>{ if((location.hash||'').startsWith('#config/usuarios')) config('usuarios'); }).catch(e=>{ main.innerHTML=`<div class="col"><div class="note erro"><div class="ni">✕</div><p><b>Não foi possível carregar os usuários</b>${esc(ptErr(e))}</p></div></div>`; }); return; }
-  const secs=[['perfil','Perfil'],['aparencia','Aparência'],['estudo','Estudo e provas'],['dados','Dados e backup'],...(isAdmin()?[['usuarios','Usuários'],['certificado','Certificado']]:[]),['sair','Sair']];
+  const secs=[['perfil','Perfil'],['aparencia','Aparência'],['estudo','Estudo e provas'],['dados','Dados e backup'],...(isAdmin()?[['usuarios','Usuários'],['certificado','Certificado'],['voz','Voz do Mestre']]:[]),['sair','Sair']];
   sec=secs.some(s=>s[0]===sec)?sec:'perfil';
   const u=U(), s=D().settings;
   const body={
@@ -2838,6 +2880,15 @@ function config(sec){
    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${x.id!==u.id?`<select data-role aria-label="Perfil"><option value="aluno" ${x.role==='aluno'?'selected':''}>Aluno</option><option value="admin" ${x.role==='admin'?'selected':''}>Administrador</option></select><label class="lvchk" style="margin:0"><label style="margin:0"><input type="checkbox" data-ativo ${x.ativo!==false?'checked':''}>Ativo</label></label><button class="btn ghost" data-reset type="button" title="Envia um e-mail para o usuário criar nova senha">Enviar link de senha</button>`:'<span class="muted">Você</span>'}</div></div>`;}).join('')}
    <div class="msg" id="uMsg"></div><div class="actions"><button class="btn" id="uSave">Salvar usuários</button><button class="btn ghost" id="uReload" type="button">Atualizar lista</button></div>
    <p class="muted">Para excluir definitivamente uma conta, desative-a aqui e depois apague o usuário no painel do Supabase (Authentication › Users).</p>`;},
+  voz:()=>{const o=STORE.org, on=!!(o.vozExterna||o.vozHeygen), prov=o.vozProvider||(o.vozHeygen?'heygen':''), vv=o.vozVoice||(o.vozHeygen?o.heygenVoice:'')||'', PV=window.VZPROV, VL=window.VZVOICES||[];
+   const PN={elevenlabs:'ElevenLabs (voz mais humana)',google:'Google Cloud · Chirp 3 HD (muito natural)',azure:'Microsoft Azure · vozes neurais pt-BR',openai:'OpenAI · voz com instrução de tom',heygen:'HeyGen'};
+   return `<h2>Voz do Mestre</h2><p class="muted">Use uma voz profissional por inteligência artificial, igual para todos os alunos em qualquer navegador. Os áudios são gerados uma única vez e reaproveitados. Requer a função <code>voz-mestre</code> e a chave de pelo menos um provedor no Supabase (veja o LEIA-ME).</p>
+   <label class="sw"><span>Usar a voz profissional para todos os alunos<small>Desligado: o Mestre usa a voz do navegador de cada pessoa.</small></span><input type="checkbox" id="vzOn" ${on?'checked':''}></label>
+   <div class="grid"><label>Provedor<select id="vzProv">${PV?(PV.length?PV.map(p=>`<option value="${p}" ${p===prov?'selected':''}>${esc(PN[p]||p)}</option>`).join(''):'<option value="">Nenhum provedor configurado no Supabase</option>'):`<option value="${esc(prov)}">${esc(PN[prov]||'Carregando provedores…')}</option>`}</select></label>
+   <label>Voz<select id="vzVoice"><option value="">Automática (masculina, português)</option>${VL.map(v=>`<option value="${esc(v.id)}" ${vv===v.id?'selected':''}>${esc(v.name||v.id)}${v.gender?' · '+esc(v.gender):''}${v.language?' · '+esc(v.language):''}${v.note?' · '+esc(v.note):''}</option>`).join('')}${vv&&!VL.some(v=>v.id===vv)?`<option value="${esc(vv)}" selected>${esc(vv)}</option>`:''}</select></label></div>
+   <div class="msg" id="vzMsg"></div>
+   <div class="actions"><button class="btn ghost" id="vzList" type="button">Listar vozes do provedor</button><button class="btn ghost" id="vzTest" type="button">▶ Testar voz</button><button class="btn" id="vzSave" type="button">Salvar</button></div>
+   <p class="muted">Sugestões de voz masculina, tom médio: ElevenLabs (vozes brasileiras da Voice Library adicionadas à sua conta), Google <b>Chirp3-HD-Charon</b> ou <b>Chirp3-HD-Orus</b>, Azure <b>pt-BR-AntonioNeural</b> ou <b>pt-BR-MacerioMultilingualNeural</b>, OpenAI <b>Ash</b> ou <b>Verse</b>.</p>`;},
   certificado:()=>{const o=ORG(); return `<h2>Certificado</h2><p class="muted">Dados que aparecem em todos os certificados emitidos.</p>
    <div class="grid"><label>Empresa ou instituição<input id="oEmp" value="${esc(o.empresa)}"></label><label>Responsável que assina<input id="oResp" value="${esc(o.resp)}"></label><label>Cargo do responsável<input id="oCargo" value="${esc(o.cargo)}"></label></div>
    <h3>Carga horária por nível</h3>${Object.values(COURSES).map(c=>`<p class="muted" style="margin:14px 0 0"><b>${c.icon} ${c.nome}</b></p><div class="grid">${c.levels.map(L=>`<label>Nível ${L.n} · ${L.title}<input type="number" min="1" max="200" data-h="${c.id}:${L.n}" value="${o.horas[c.id][L.n]}"></label>`).join('')}</div>`).join('')}
@@ -2893,6 +2944,21 @@ function config(sec){
       config('usuarios'); toast('Usuários salvos no banco de dados');
     };
   }
+  if(sec==='voz'){
+    const vm=(t,ok)=>msg('vzMsg',t,ok);
+    const err=(d,e,base)=>base+((d&&d.error)||(e&&e.message)||'verifique a função voz-mestre e as chaves no Supabase.');
+    const keepUI=()=>({on:$('#vzOn').checked,voice:$('#vzVoice').value});
+    if(!window.VZPROV){ SB.functions.invoke('voz-mestre',{body:{action:'providers'}}).then(({data,error})=>{ if(error||!data){ window.VZPROV=[]; if((location.hash||'').startsWith('#config/voz')){ const k=keepUI(); config('voz'); $('#vzOn').checked=k.on; vm(err(data,error,'Não foi possível consultar a função de voz: ')); } return; }
+      window.VZPROV=data.providers||[]; if((location.hash||'').startsWith('#config/voz')){ const k=keepUI(); config('voz'); $('#vzOn').checked=k.on; if(!window.VZPROV.length) vm('Nenhum provedor configurado. Adicione a chave de um provedor em Edge Functions › Secrets.'); } }); }
+    $('#vzProv').onchange=()=>{ window.VZVOICES=[]; STORE.org._tmpProv=$('#vzProv').value; $('#vzVoice').innerHTML='<option value="">Automática (masculina, português)</option>'; };
+    $('#vzList').onclick=async()=>{ const p=$('#vzProv').value; vm('Consultando vozes…',true); const {data,error}=await SB.functions.invoke('voz-mestre',{body:{action:'voices',provider:p}});
+      if(error||!data||!data.voices){ vm(err(data,error,'Não foi possível listar as vozes: ')); return; }
+      window.VZVOICES=data.voices.sort((a,b)=>(/^m/i.test(a.gender)?0:1)-(/^m/i.test(b.gender)?0:1)); const k=keepUI(); const saveProv=STORE.org.vozProvider; STORE.org.vozProvider=p; config('voz'); STORE.org.vozProvider=saveProv; $('#vzProv').value=p; $('#vzOn').checked=k.on; vm(data.voices.length+' voz(es). Escolha uma, teste e salve.',true); };
+    $('#vzTest').onclick=async()=>{ vm('Gerando áudio de teste…',true); const {data,error}=await SB.functions.invoke('voz-mestre',{body:{text:'Olá! Eu sou o Mestre. É com esta voz que vou explicar cada etapa do seu treinamento: as aulas, os exercícios, a prova e o certificado.',provider:$('#vzProv').value,voice:$('#vzVoice').value}});
+      if(error||!data||!data.url){ vm(err(data,error,'Falha ao gerar a voz: ')); return; } const a=new Audio(data.url); a.playbackRate=1.1; a.play().catch(()=>{}); vm('Tocando: '+(data.provider||'')+' · '+(data.voice||''),true); };
+    $('#vzSave').onclick=async()=>{ STORE.org.vozExterna=$('#vzOn').checked; STORE.org.vozHeygen=false; delete STORE.org.heygenVoice; STORE.org.vozProvider=$('#vzProv').value||''; STORE.org.vozVoice=$('#vzVoice').value||''; delete STORE.org._tmpProv;
+      try{ await saveOrg(); toast('Voz do Mestre salva'); vm('Configuração salva. Os alunos passam a ouvir a nova voz ao recarregar a página.',true);}catch(e){ vm(ptErr(e)); } };
+  }
   if(sec==='certificado') $('#oSave').onclick=async()=>{const o=ORG(); o.empresa=$('#oEmp').value.trim()||ORG_DEF.empresa; o.resp=$('#oResp').value.trim()||ORG_DEF.resp; o.cargo=$('#oCargo').value.trim(); main.querySelectorAll('[data-h]').forEach(i=>{const [c,n]=i.dataset.h.split(':'); o.horas[c][n]=Math.max(1,+i.value||ORG_DEF.horas[c][n]);}); try{ await saveOrg(); toast('Configurações do certificado salvas'); }catch(e){ toast(ptErr(e)); } };
   if(sec==='sair'){ $('#oOut').onclick=logout; }
 }
@@ -2947,6 +3013,156 @@ async function boot(){
   route();
 }
 boot();
+
+/* =================== Mestre: avatar guia =================== */
+(function(){
+const GKEY='mestre-guia';
+let GP={mode:'on'}; try{GP=Object.assign(GP,JSON.parse(localStorage.getItem(GKEY)||'{}'));}catch(e){} if((GP.v||0)<2){ delete GP.rate; delete GP.voice; GP.v=2; }
+const gsave=()=>{try{localStorage.setItem(GKEY,JSON.stringify(GP));}catch(e){}};
+let gid=0; const AV=(cls='')=>{const id='gclip'+(++gid); return `<svg class="mav ${cls}" viewBox="0 0 120 120" aria-hidden="true">
+ <circle cx="60" cy="60" r="58" fill="var(--lvt)"/>
+ <clipPath id="${id}"><circle cx="60" cy="60" r="58"/></clipPath>
+ <g clip-path="url(#${id})">
+  <path d="M14 122c2-24 18-34 46-34s44 10 46 34z" fill="#1A2142"/>
+  <path d="M46 88l14 20 14-20z" fill="#fff"/>
+  <path d="M57 92h6l3 18-6 7-6-7z" fill="var(--lv)"/>
+  <rect x="51" y="70" width="18" height="16" rx="6" fill="#E8B48F"/>
+  <g class="hand"><path d="M96 122c0-10 2-18 6-24" stroke="#1A2142" stroke-width="12" stroke-linecap="round" fill="none"/><circle cx="103" cy="95" r="7" fill="#E8B48F"/></g>
+ </g>
+ <ellipse cx="34" cy="53" rx="5" ry="7" fill="#E8B48F"/><ellipse cx="86" cy="53" rx="5" ry="7" fill="#E8B48F"/>
+ <ellipse cx="60" cy="50" rx="26" ry="28" fill="#F2C7A5"/>
+ <path d="M33 47c-1-17 11-28 27-28 17 0 29 10 27 28-4-9-12-14-22-14-8 0-13 3-18 7-5 3-9 4-14 7z" fill="#3B2A22"/>
+ <path d="M41 40c3-2 7-2 10 0M69 40c3-2 7-2 10 0" stroke="#3B2A22" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+ <rect x="38" y="44" width="18" height="13" rx="5" fill="rgba(255,255,255,.35)" stroke="#1A2142" stroke-width="2.4"/>
+ <rect x="64" y="44" width="18" height="13" rx="5" fill="rgba(255,255,255,.35)" stroke="#1A2142" stroke-width="2.4"/>
+ <path d="M56 50h8" stroke="#1A2142" stroke-width="2.4"/>
+ <ellipse class="eye" cx="47" cy="50.5" rx="2.6" ry="3" fill="#1A2142"/><ellipse class="eye" cx="73" cy="50.5" rx="2.6" ry="3" fill="#1A2142"/>
+ <path d="M59 55c-1 4-2 6 1 7" stroke="#C98E6A" stroke-width="2" stroke-linecap="round" fill="none"/>
+ <circle cx="44" cy="62" r="4" fill="#F0A58C" opacity=".45"/><circle cx="76" cy="62" r="4" fill="#F0A58C" opacity=".45"/>
+ <path class="mouthS" d="M51 66c5 5 13 5 18 0" stroke="#7A3B2E" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+ <ellipse class="mouthT" cx="60" cy="67.5" rx="6" ry="4" fill="#7A3B2E"/>
+</svg>`;};
+const NIV={
+ fiscal:{1:'No nível básico você aprende a base da rotina fiscal: o que é escriturar, quais leis sustentam o trabalho, como ler uma nota fiscal e como lançar compras, vendas, transferências e outras movimentações, sempre com o CFOP correto.',
+  2:'No nível intermediário entram os cálculos: alíquotas internas e interestaduais, DIFAL, substituição tributária, IPI, PIS e Cofins, ISS, Simples Nacional e a apuração mensal dos impostos.',
+  3:'No nível avançado você conhece as obrigações acessórias: EFD ICMS/IPI, EFD-Contribuições, DCTFWeb, Reinf, ECD e ECF. Vai ver o que cada uma informa, como preparar, como entregar e os prazos.',
+  4:'Neste nível você entende a reforma tributária: IBS, CBS e Imposto Seletivo, o cronograma de transição até 2033, a nota fiscal de 2026 e exemplos práticos de cálculo.'},
+ dp:{1:'No nível básico você conhece a rotina do Departamento Pessoal: legislação, admissão e contratos, jornada e ponto, salário e adicionais, folha de pagamento, benefícios e o custo de um empregado.',
+  2:'No nível intermediário você pratica os cálculos da folha: INSS e IRRF de 2026, horas extras e DSR, férias, 13º salário, afastamentos e rescisão.',
+  3:'No nível avançado o foco são as obrigações: eventos do eSocial, FGTS Digital, DCTFWeb, outras declarações, o fechamento da folha e o calendário de prazos.',
+  4:'Neste nível você fica em dia com as novidades de 2026: a nova isenção do imposto de renda, as tabelas atualizadas, a NR-1, a igualdade salarial e a reoneração da folha.'},
+ ct:{1:'No nível básico você aprende a linguagem da contabilidade: ciclo contábil, normas, patrimônio, plano de contas, débito e crédito, lançamentos do dia a dia e balancete.',
+  2:'No nível intermediário você trabalha com estoques e CMV, receita e deduções, imobilizado e depreciação, provisões, perdas com clientes, conciliações e o encerramento do exercício.',
+  3:'No nível avançado você monta e analisa as demonstrações: balanço, DRE, fluxo de caixa e índices, e conhece a ECD, a ECF e os regimes de tributação.',
+  4:'Neste nível você vê o que muda em 2026: tributação de dividendos, a reforma tributária na contabilidade, o Lucro Presumido com a LC 224 e as normas de sustentabilidade.'}
+};
+const nome1=()=>{try{const u=U(); return u?String(u.nome).split(' ')[0]:'';}catch(e){return '';}};
+const cur=()=>{try{return COURSES[CUR];}catch(e){return null;}};
+function ctx(){
+  const h=(location.hash||'#home').slice(1), [a,b]=h.split('/'), C=cur(), M=$('#main');
+  if(!M||$('#exTm')) return null;
+  if(document.body.classList.contains('noauth')){
+    if(!$('.auth .hero .lead')) return null;
+    return {k:'auth',where:'hero',t:'Bem-vindo!',p:['Eu sou o Mestre e vou guiar você nos treinamentos. Crie sua conta ou entre com seu e-mail. Depois é só escolher o treinamento e seguir a trilha, nível por nível.']};
+  }
+  if($('#main .crsbox')) return {k:'cursos',t:'Escolha do treinamento',p:['Aqui estão os treinamentos liberados para você. Cada um tem aulas, provas e certificados próprios, e o progresso de cada um fica salvo separadamente. Escolha um para começar; depois você pode trocar pelo botão escuro no topo da tela.']};
+  if(!C) return null;
+  if(!h||a==='home'||a==='login'||a==='signup'){ const n=nome1();
+    return {k:'home'+CUR,where:'hero',t:'Seu guia no treinamento',p:[`Olá${n?', '+n:''}! Eu sou o Mestre, seu guia no treinamento de ${C.nome}.`,'A trilha tem 4 níveis. Em cada um: leia as aulas e clique em Concluir aula, faça os exercícios de fixação e, por fim, a prova do nível. Aprovado na prova e com todas as aulas concluídas, você recebe o certificado.','Dica: os termos de lei destacados nas aulas abrem um resumo com link para o texto oficial.']};}
+  if(a==='cursos') return {k:'cursos',t:'Escolha do treinamento',p:['Aqui estão os treinamentos liberados para você. Cada um tem progresso, provas e certificados separados, e você pode alternar quando quiser.']};
+  if(a==='l'){ const l=(ALL||[]).find(x=>x.id===b); if(!l) return null; const L=LEVELS[l.lv-1];
+    const lead=(($('#lbody .lead')||$('#lbody p')||{}).textContent||'').trim(), hs=[...document.querySelectorAll('#lbody h2')].map(x=>x.textContent.trim()).slice(0,5);
+    const p=[]; if(l.ix===0) p.push(NIV[CUR]&&NIV[CUR][l.lv]||'');
+    p.push(`Aula ${l.ix+1} de ${L.lessons.length}: ${l.t}. ${lead}`);
+    return {k:'l'+b,t:l.ix===0?`Começando o nível ${l.lv} · ${L.title}`:`Nível ${l.lv} · aula ${l.ix+1}`,p:p.filter(Boolean),ul:hs.length?['Nesta aula: '+hs.join(' · ')]:null,end:'Leia com calma, confira os exemplos e, ao terminar, clique em Concluir aula e seguir.'};}
+  if(a==='q') return {k:'q'+b+CUR,t:`Exercícios do nível ${b}`,p:['São 6 questões com correção na hora: depois de responder, aparece a explicação. Use para treinar antes da prova.','A cada nova rodada vêm questões diferentes; as já vistas só voltam depois de 5 rodadas.']};
+  if(a==='p'){ if($('.cert')){ const ok=$('.stamp2.ok'); return {k:'pr'+b+CUR+(ok?1:0),t:ok?'Parabéns!':'Quase lá',p:[ok?'Você foi aprovado na prova. Se todas as aulas do nível estiverem concluídas, o certificado já foi emitido e está em Certificados.':'Desta vez não deu. Revise o gabarito comentado abaixo, volte às aulas com mais dúvidas e tente de novo: a próxima prova terá questões diferentes.']}; }
+    let s={examMin:20,passPct:70}; try{s=D().settings;}catch(e){}
+    return {k:'p'+b+CUR,t:`Prova do nível ${b}`,p:[`A prova tem ${typeof EXAM_N!=='undefined'?EXAM_N:15} questões, ${s.examMin} minutos e nota mínima de ${s.passPct}%. As respostas só são corrigidas quando você entrega.`,'As questões não se repetem nas suas próximas 5 tentativas. Ao ser aprovado e com todas as aulas concluídas, o certificado do nível é emitido automaticamente.']};}
+  if(a==='cert') return {k:'c'+(b||'')+CUR,t:'Certificados',p:[b?'Aqui está o seu certificado. Você pode imprimir, salvar em PDF ou baixar como imagem. O código no canto superior permite que qualquer pessoa confira a autenticidade.':'Cada nível concluído gera um certificado: conclua todas as aulas e seja aprovado na prova. Ao completar os quatro níveis, você recebe também o certificado da trilha completa.']};
+  if(a==='leis') return {k:'leis'+CUR,t:'Biblioteca legal',p:['Aqui estão todas as normas citadas no treinamento. Toque em uma para ver o resumo, os artigos principais, as aulas em que aparece e o link para o texto oficial.']};
+  if(a==='calc') return {k:'calc'+CUR,t:'Calculadoras',p:['Use as calculadoras para praticar os cálculos das aulas. Altere os valores e veja cada passo do raciocínio, igual aos exemplos.']};
+  if(a==='ref'||a==='cfop') return {k:'ref'+CUR,t:C.ref.label,p:[C.ref.desc+' Use a busca e os filtros para encontrar o que precisa.']};
+  if(a==='config') return {k:'cfg'+(b||''),t:'Configurações',p:['Aqui você ajusta seu perfil, a aparência, as regras de estudo e prova e faz backup dos dados.'+(isAdmin()?' Como administrador, também aplica treinamentos e níveis aos usuários e configura o certificado.':'')]};
+  if(a==='validar') return {k:'val',t:'Validar certificado',p:['Digite o código impresso no certificado para confirmar se ele é autêntico, para quem foi emitido e em que data.']};
+  return null;
+}
+const plain=c=>[c.t+'.',...c.p,...(c.ul||[]),c.end||''].join(' ').replace(/·/g,',').replace(/\s+/g,' ').trim();
+let voices=[]; const loadV=()=>{try{voices=speechSynthesis.getVoices().filter(v=>/^pt/i.test(v.lang));}catch(e){}}; if('speechSynthesis' in window){loadV(); try{speechSynthesis.addEventListener('voiceschanged',()=>{loadV(); fillVoz();});}catch(e){speechSynthesis.onvoiceschanged=loadV;}}
+const SOFT=/Francisca|Thalita|Leila|Yara|Brenda|Elza|Giovanna|Manuela|Let[ií]cia|Luciana|Vit[oó]ria|Raquel|Camila|Fernanda|Joana|female|feminina/i;
+function vScore(v){let s=0; if(/^pt[-_]BR/i.test(v.lang)) s+=50; if(/Natural|Neural|Online|Premium|Enhanced|Wavenet/i.test(v.name)) s+=100; if(/Google/i.test(v.name)) s+=40; if(/Antonio|Donato|Fabio|Humberto|Julio|Nicolau|Valerio|Macerio|Daniel|Felipe|Ricardo|male\b|masculin/i.test(v.name)&&!/female/i.test(v.name)) s+=60; else if(SOFT.test(v.name)) s+=10; if(!v.localService) s+=5; return s;}
+const vSorted=()=>[...voices].sort((a,b)=>vScore(b)-vScore(a));
+function pickVoice(){ const l=vSorted(); return l.find(v=>v.name===GP.voice)||l[0]||null; }
+const isNatural=v=>!!v&&/Natural|Neural|Online|Premium|Enhanced|Google/i.test(v.name);
+function talking(on){document.querySelectorAll('.mav').forEach(m=>m.classList.toggle('talking',on)); const b=$('#gSpeak'); if(b) b.textContent=on?'⏹ Parar':'🔊 Ouvir explicação';}
+let speakId=0;
+let hgAudio=null, HGWARN=false; const hgCache={};
+const HG_ON=()=>{ try{ return typeof SB!=='undefined'&&!!SB&&!!U()&&!!(STORE.org&&(STORE.org.vozExterna||STORE.org.vozHeygen))&&GP.engine!=='browser'; }catch(e){ return false; } };
+function speak(text){ if(HG_ON()) return speakHG(text); return speakBrowser(text); }
+async function speakHG(text){
+  if(hgAudio&&!hgAudio.paused){ stopSpeak(); return; }
+  const id=++speakId; const b=$('#gSpeak'); if(b) b.textContent='⏳ Preparando a voz…';
+  try{
+    const prov=(STORE.org&&STORE.org.vozProvider)||'', vo=(STORE.org&&(STORE.org.vozVoice||(STORE.org.vozHeygen?STORE.org.heygenVoice:'')))||'', ck=prov+'|'+vo+'|'+text;
+    let url=hgCache[ck];
+    if(!url){ const {data,error}=await SB.functions.invoke('voz-mestre',{body:{text,provider:prov,voice:vo}});
+      if(error||!data||!data.url) throw new Error((data&&data.error)||(error&&error.message)||'sem áudio'); url=hgCache[ck]=data.url; }
+    if(id!==speakId) return;
+    hgAudio=new Audio(url); hgAudio.playbackRate=Math.min(1.5,Math.max(.8,(GP.rate||1.15)-0.05));
+    hgAudio.onplay=()=>{ if(id===speakId) talking(true); }; hgAudio.onended=hgAudio.onpause=()=>talking(false); hgAudio.onerror=()=>talking(false);
+    await hgAudio.play();
+  }catch(e){ talking(false); if(id!==speakId) return; if(!HGWARN){ HGWARN=true; toast('Voz profissional indisponível agora; usando a voz do navegador.'); } speakBrowser(text); }
+}
+function speakBrowser(text){
+  if(!('speechSynthesis' in window)){ toast('Seu navegador não tem leitura em voz alta.'); return; }
+  if(speechSynthesis.speaking||speechSynthesis.pending){ speechSynthesis.cancel(); talking(false); return; }
+  const v=pickVoice(), id=++speakId;
+  // frases curtas soam mais naturais e evitam cortes do Chrome em textos longos
+  let parts=text.replace(/\s+/g,' ').replace(/(\d)\.(\d)/g,'$1$2').match(/[^.!?:;]+[.!?:;]*/g)||[]; for(let k=0;k<parts.length;k++) parts[k]=parts[k].trim(); while(parts.indexOf('')>=0) parts.splice(parts.indexOf(''),1);
+  const rate=GP.rate||1.15;
+  parts.forEach((p,i)=>{ const u=new SpeechSynthesisUtterance(p); u.lang=(v&&v.lang)||'pt-BR'; if(v) u.voice=v; u.rate=rate; u.pitch=1; u.volume=0.95;
+    if(i===0) u.onstart=()=>{ if(id===speakId) talking(true); };
+    if(i===parts.length-1) u.onend=()=>{ if(id===speakId) talking(false); };
+    u.onerror=()=>{ if(id===speakId) talking(false); };
+    speechSynthesis.speak(u); });
+  if(!isNatural(v)&&!GP.hinted){ GP.hinted=1; gsave(); setTimeout(()=>toast('Dica: no navegador Microsoft Edge as vozes “Natural” (Francisca, Thalita) soam bem mais humanas.'),900); }
+}
+function fillVoz(){ const sel=$('#gVoz'); if(!sel) return; const l=vSorted(), cur=pickVoice();
+  sel.innerHTML=l.length?l.map(v=>`<option value="${esc(v.name)}" ${cur&&v.name===cur.name?'selected':''}>${esc(v.name.replace(/Microsoft |Google /,''))}${isNatural(v)?' ★':''} · ${v.lang}</option>`).join(''):'<option>Nenhuma voz em português encontrada</option>';
+  const tip=$('#gVozTip'); if(tip) tip.textContent=l.some(isNatural)?'★ vozes mais naturais (neurais).':'Este navegador só tem vozes básicas. Para uma voz mais humana, abra o treinamento no Microsoft Edge (vozes Natural) ou no Chrome (voz Google).';}
+function stopSpeak(){speakId++; try{ if(hgAudio){ hgAudio.pause(); hgAudio=null; } }catch(e){} try{if(speechSynthesis.speaking||speechSynthesis.pending) speechSynthesis.cancel();}catch(e){} talking(false);}
+let fab=null;
+function ensureFab(){ if(fab) return; fab=document.createElement('button'); fab.className='guiafab hid'; fab.type='button'; fab.setAttribute('aria-label','Mostrar o Mestre, guia do treinamento'); fab.innerHTML=AV(); fab.onclick=()=>{GP.mode='on'; gsave(); render(true); const g=$('.guia'); if(g) g.scrollIntoView({behavior:'smooth',block:'center'});}; document.body.appendChild(fab); }
+let lastK=null;
+function render(force){
+  ensureFab(); const c=ctx(); const old=$('#main .guia');
+  fab.classList.toggle('hid',!c||GP.mode!=='min');
+  if(!c||GP.mode==='min'){ if(old) old.remove(); return; }
+  if(old&&old.dataset.k===c.k&&!force) return;
+  if(old) old.remove(); if(lastK!==c.k) stopSpeak(); lastK=c.k;
+  const el=document.createElement('section'); el.className='guia'; el.dataset.k=c.k; el.setAttribute('aria-label','Explicação do Mestre');
+  el.innerHTML=`<div class="av">${AV()}</div><div><div class="bub"><small>Mestre · ${esc(c.t)}</small>${c.p.map(x=>`<p>${esc(x)}</p>`).join('')}${c.ul?`<ul>${c.ul.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${c.end?`<p>${esc(c.end)}</p>`:''}</div>
+  <div class="gact">${'speechSynthesis' in window?'<button type="button" class="pri" id="gSpeak">🔊 Ouvir explicação</button>':''}${'speechSynthesis' in window?'<button type="button" id="gVozB">🎙 Voz</button>':''}<button type="button" id="gMin">Minimizar o guia</button></div>
+  <div class="gvoz" id="gVozP">${(typeof SB!=='undefined'&&SB&&STORE.org&&(STORE.org.vozExterna||STORE.org.vozHeygen))?'<label>Tipo de voz<select id="gEng"><option value="heygen">Profissional</option><option value="browser">Do navegador</option></select></label>':''}<label>Voz do navegador<select id="gVoz"></select></label><label>Velocidade<select id="gRate"><option value="0.95">Calma</option><option value="1.05">Normal</option><option value="1.15">Um pouco rápida</option><option value="1.25">Rápida</option></select></label><button type="button" id="gTest">▶ Testar</button><small id="gVozTip"></small></div></div>`;
+  let host=null;
+  if(c.where==='hero'){ const hl=$('#main .hero .lead'); if(hl){ hl.insertAdjacentElement('afterend',el); host=1; } }
+  if(!host){ const lh=$('#main .lhead'); if(lh) lh.insertAdjacentElement('afterend',el); else { const col=$('#main .col')||$('#main'); col.insertBefore(el,col.firstChild); } }
+  const sp=el.querySelector('#gSpeak'); if(sp) sp.onclick=()=>speak(plain(c));
+  const vb=el.querySelector('#gVozB'); if(vb){ vb.onclick=()=>{ $('#gVozP').classList.toggle('open'); loadV(); fillVoz(); };
+    $('#gRate').value=String(GP.rate||1.15);
+    const ge=$('#gEng'); if(ge){ ge.value=GP.engine==='browser'?'browser':'heygen'; ge.onchange=e=>{GP.engine=e.target.value; gsave(); stopSpeak();}; }
+    $('#gVoz').onchange=e=>{GP.voice=e.target.value; gsave();};
+    $('#gRate').onchange=e=>{GP.rate=+e.target.value; gsave();};
+    $('#gTest').onclick=()=>{ stopSpeak(); speak('Olá! Eu sou o Mestre. É com esta voz que vou explicar cada etapa do seu treinamento.'); }; }
+  el.querySelector('#gMin').onclick=()=>{GP.mode='min'; gsave(); stopSpeak(); render(); toast('O Mestre ficou no canto da tela. Toque nele para ver a explicação de novo.');};
+  try{ if('speechSynthesis' in window&&speechSynthesis.speaking) talking(true); }catch(e){}
+}
+let rt=null; const sched=()=>{clearTimeout(rt); rt=setTimeout(()=>render(false),60);};
+new MutationObserver(m=>{ if(m.some(x=>[...x.addedNodes].some(n=>n.nodeType===1&&!(n.classList&&n.classList.contains('guia'))))) sched(); }).observe($('#main'),{childList:true,subtree:false});
+window.addEventListener('hashchange',()=>{stopSpeak(); sched();});
+document.addEventListener('click',e=>{ if(e.target.closest('#main [data-go], #main .seg button, #markBtn')) setTimeout(sched,120); });
+sched();
+})();
 </script>
 <script>
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
