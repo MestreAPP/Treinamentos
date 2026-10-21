@@ -493,6 +493,109 @@ body.calm .mav *{animation:none!important}
 .pans span{background:var(--lvt);border-radius:10px;padding:6px 12px}
 .pans small{display:block;font-size:11.5px;color:var(--ink2)}
 .pans b{color:var(--lv)}
+
+@media (max-width: 1150px){
+  .top>*{flex-shrink:0}
+  .top .tabs{flex-shrink:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .top .tabs::-webkit-scrollbar{display:none}
+  .tabs a{padding:6px 11px}
+  .brand .bt small{display:none}
+}
+.toast{width:max-content;max-width:calc(100vw - 32px)}
+/* ===== Celular ===== */
+.bnav{display:none}
+.guia .gmore{display:none}
+@media (max-width: 760px){
+  body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  body.noauth{padding-bottom:0}
+  .top{gap:8px;padding:8px 12px}
+  .top .tabs{display:none}
+  .brand{margin-right:auto}
+  .savebtn{padding:0 11px;gap:6px}
+  .savebtn #saveTxt{display:none}
+  .savebtn::before{content:"💾";font-size:15px}
+  .crsbtn{padding:0 10px}
+  #crsTxt{display:none}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:44;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+  .bnav a,.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--ink3);font:inherit;font-size:11px;font-weight:650;text-decoration:none;padding:4px 0;border-radius:12px;cursor:pointer;min-height:48px;justify-content:center}
+  .bnav .bi{font-size:20px;line-height:1;filter:grayscale(1);opacity:.75}
+  .bnav .on{color:var(--lv)}
+  .bnav .on .bi{filter:none;opacity:1}
+  body.noauth .bnav,body.inexam .bnav{display:none}
+  body.inexam{padding-bottom:0}
+  .guiafab{bottom:calc(78px + env(safe-area-inset-bottom,0px));right:12px}
+  body.noauth .guiafab,body.inexam .guiafab{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  main{padding:18px 14px 40px}
+  .lhead{padding:18px 16px 16px;margin-bottom:18px;border-radius:14px}
+  .lhead h1,h1{font-size:28px}
+  h2{font-size:21px;margin-top:32px}
+  .lead{font-size:16.5px}
+  .hero{padding:22px 18px;border-radius:18px;gap:18px}
+  .hero h1{font-size:30px}
+  .ring{width:128px;height:128px;margin:0 auto}.ring div{width:98px;height:98px}.ring b{font-size:26px}
+  .side{width:min(330px,90vw);bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .sl a.it{padding:10px 10px 10px 14px;font-size:15px}
+  .sl .h{padding:10px}
+  th,td{padding:8px 10px;font-size:14px}
+  .ex .in{padding:14px}
+  .ex>header{padding:11px 14px;font-size:15px}
+  .lei{grid-template-columns:34px 1fr;padding:14px;gap:10px}.lei .ic{width:34px;height:34px;font-size:18px;border-radius:10px}
+  .flow div{flex:0 0 72%}
+  .calcnav{flex-wrap:nowrap;overflow-x:auto;width:auto;max-width:100%;border-radius:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .calcnav::-webkit-scrollbar{display:none}
+  .calcnav button{white-space:nowrap;flex:0 0 auto}
+  .calc{padding:16px}
+  .form{grid-template-columns:1fr 1fr;gap:10px}
+  .form input,.form select,.pin input,.pf select,.search input,.search select,.stackf input,.stackf select,.cfg input,.cfg select,.notes textarea{font-size:16px}
+  .pfields{grid-template-columns:1fr}
+  .pact .btn{flex:1 1 auto;justify-content:center}
+  .q{padding:14px}
+  .q label{padding:12px}
+  .exhead{top:calc(env(safe-area-inset-top,0px) + 58px);padding:10px 14px;gap:8px;border-radius:12px}
+  .exhead .bar{width:90px}
+  .exhead .tm{font-size:22px}
+  .markrow .btn{flex:1 1 auto;justify-content:center}
+  .score,.cert{padding:16px}
+  .cert .big,.score .big{font-size:40px}
+  .feat a,.lvl{padding:16px}
+  .cfgwrap{gap:14px}
+  .cfg{padding:16px}
+  .search{gap:8px}
+  .search input{flex-basis:100%}
+  .danfe{font-size:12.5px}
+  .dhead{padding:18px 18px 14px}.dbody{padding:16px 18px 24px}
+  .drawer{padding-bottom:env(safe-area-inset-bottom,0px)}
+  /* guia compacto */
+  .guia{grid-template-columns:46px minmax(0,1fr);gap:10px;padding:12px;margin-bottom:18px}
+  .guia .av{width:46px;height:46px}
+  .guia .bub{padding:10px 12px}
+  .guia .bub::before{top:14px}
+  .guia .bub p{font-size:14.5px}
+  .guia:not(.open) .bub p:not(:first-of-type),.guia:not(.open) .bub ul{display:none}
+  .guia:not(.open) .bub p:first-of-type{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .guia .gmore{display:inline-block}
+  .guia .gact{gap:6px;margin-top:8px}
+  .guia .gact button{padding:6px 11px;font-size:13px}
+}
+@media (max-width: 960px){
+  body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  body.noauth{padding-bottom:0}
+  .top .tabs{display:none}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:44;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+  .bnav a,.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--ink3);font:inherit;font-size:11px;font-weight:650;text-decoration:none;padding:4px 0;border-radius:12px;cursor:pointer;min-height:48px;justify-content:center}
+  .bnav .bi{font-size:20px;line-height:1;filter:grayscale(1);opacity:.75}
+  .bnav .on{color:var(--lv)}
+  .bnav .on .bi{filter:none;opacity:1}
+  body.noauth .bnav,body.inexam .bnav{display:none}
+  body.inexam{padding-bottom:0}
+  .guiafab{bottom:calc(78px + env(safe-area-inset-bottom,0px));right:12px}
+  body.noauth .guiafab,body.inexam .guiafab{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .side{width:min(330px,90vw);bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width: 380px){ .form{grid-template-columns:1fr} .bnav a,.bnav button{font-size:10.5px} }
+@media (max-width: 960px) and (max-height: 500px) and (orientation: landscape){ body{padding-bottom:calc(50px + env(safe-area-inset-bottom,0px))} .guiafab{bottom:calc(58px + env(safe-area-inset-bottom,0px))} .bnav{padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom,0px))} .bnav a,.bnav button{min-height:40px;flex-direction:row;gap:6px} }
 </style>
 </head>
 <body>
@@ -3352,7 +3455,7 @@ function render(force){
   if(old) old.remove(); if(lastK!==c.k) stopSpeak(); lastK=c.k;
   const el=document.createElement('section'); el.className='guia'; el.dataset.k=c.k; el.setAttribute('aria-label','Explicação do Mestre');
   el.innerHTML=`<div class="av">${AV()}</div><div><div class="bub"><small>Mestre · ${esc(c.t)}</small>${c.p.map(x=>`<p>${esc(x)}</p>`).join('')}${c.ul?`<ul>${c.ul.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${c.end?`<p>${esc(c.end)}</p>`:''}</div>
-  <div class="gact">${'speechSynthesis' in window?'<button type="button" class="pri" id="gSpeak">🔊 Ouvir explicação</button>':''}${'speechSynthesis' in window?'<button type="button" id="gVozB">🎙 Voz</button>':''}<button type="button" id="gMin">Minimizar o guia</button></div>
+  <div class="gact"><button type="button" class="gmore">Ler mais</button>${'speechSynthesis' in window?'<button type="button" class="pri" id="gSpeak">🔊 Ouvir explicação</button>':''}${'speechSynthesis' in window?'<button type="button" id="gVozB">🎙 Voz</button>':''}<button type="button" id="gMin">Minimizar o guia</button></div>
   <div class="gvoz" id="gVozP">${(typeof SB!=='undefined'&&SB&&STORE.org&&(STORE.org.vozExterna||STORE.org.vozHeygen))?'<label>Tipo de voz<select id="gEng"><option value="heygen">Profissional</option><option value="browser">Do navegador</option></select></label>':''}<label>Voz do navegador<select id="gVoz"></select></label><label>Velocidade<select id="gRate"><option value="0.95">Calma</option><option value="1.05">Normal</option><option value="1.15">Um pouco rápida</option><option value="1.25">Rápida</option></select></label><button type="button" id="gTest">▶ Testar</button><small id="gVozTip"></small></div></div>`;
   let host=null;
   if(c.where==='hero'){ const hl=$('#main .hero .lead'); if(hl){ hl.insertAdjacentElement('afterend',el); host=1; } }
@@ -3372,6 +3475,25 @@ new MutationObserver(m=>{ if(m.some(x=>[...x.addedNodes].some(n=>n.nodeType===1&
 window.addEventListener('hashchange',()=>{stopSpeak(); sched();});
 document.addEventListener('click',e=>{ if(e.target.closest('#main [data-go], #main .seg button, #markBtn')) setTimeout(sched,120); });
 sched();
+})();
+
+/* =================== navegação inferior (celular) =================== */
+(function(){
+  const nav=document.createElement('nav'); nav.className='bnav'; nav.setAttribute('aria-label','Navegação principal');
+  nav.innerHTML=`<a href="#home" data-b="home"><span class="bi">🏠</span>Início</a><button type="button" data-b="aulas"><span class="bi">📚</span>Aulas</button><a href="#leis" data-b="leis"><span class="bi">§</span>Leis</a><a href="#calc" data-b="calc"><span class="bi">🧮</span>Cálculos</a><a href="#cert" data-b="cert"><span class="bi">🎓</span>Certificados</a><a href="#config" data-b="config"><span class="bi">⚙️</span>Mais</a>`;
+  document.body.appendChild(nav);
+  nav.querySelector('[data-b=aulas]').onclick=()=>{ const s=document.getElementById('side'); const o=s.classList.toggle('open'); document.getElementById('menuBtn').setAttribute('aria-expanded',o); upd(); };
+  const map={home:'home',l:'aulas',q:'aulas',p:'aulas',caso:'aulas',cursos:'home',leis:'leis',calc:'calc',ref:'calc',cfop:'calc',cert:'cert',config:'config',validar:'config'};
+  function upd(){ const a=((location.hash||'#home').slice(1).split('/')[0])||'home'; const open=document.getElementById('side').classList.contains('open'); const k=open?'aulas':(map[a]||'home');
+    nav.querySelectorAll('[data-b]').forEach(x=>{ x.classList.toggle('on',x.dataset.b===k); if(x.dataset.b===k) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current'); });
+    document.body.classList.toggle('inexam',!!document.getElementById('exTm')); }
+  window.addEventListener('hashchange',()=>setTimeout(upd,30));
+  new MutationObserver(()=>setTimeout(upd,20)).observe(document.getElementById('main'),{childList:true});
+  new MutationObserver(upd).observe(document.getElementById('side'),{attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',e=>{ const b=e.target.closest('.gmore'); if(!b) return; const g=b.closest('.guia'); const o=g.classList.toggle('open'); b.textContent=o?'Ler menos':'Ler mais'; });
+  // fecha o menu lateral ao tocar fora (celular)
+  document.addEventListener('click',e=>{ const s=document.getElementById('side'); if(!s.classList.contains('open')||window.innerWidth>960) return; if(e.target.closest('#side,#menuBtn,.bnav')) return; s.classList.remove('open'); });
+  upd();
 })();
 </script>
 <script>
