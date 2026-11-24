@@ -2490,7 +2490,7 @@ const eligible=n=>n===0?[1,2,3,4].every(k=>eligible(k)):(lessonsDone(n)&&passedE
 function certCode(n,date){let h=2166136261; const s=U().id+'|'+n+'|'+date; for(let i=0;i<s.length;i++){h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return 'MT-'+({dp:'D',ct:'C'}[CUR]||'F')+(n||'T')+'-'+(h>>>0).toString(36).toUpperCase().padStart(7,'0');}
 function checkCerts(){
   if(!U()) return; const c=D().certs=D().certs||{}; let novo=[];
-  [1,2,3,4,0].forEach(n=>{ if(eligible(n)&&!c[n]){ const pct=n===0?Math.round([1,2,3,4].reduce((a,k)=>a+c[k].pct,0)/4):Math.max(...passedExam(n).map(h=>h.pct)); const date=Date.now(); c[n]={date,pct,code:certCode(n,date)}; novo.push(n);} });
+  [1,2,3,4,0].forEach(n=>{ if(eligible(n)&&!c[n]){ const pct=n===0?Math.round([1,2,3,4].reduce((a,k)=>a+c[k].pct,0)/4):Math.max(...passedExam(n).map(h=>h.pct)); const date=Date.now(); c[n]={date,pct,code:certCode(n,date),exam:n?(passedExam(n).slice().sort((a,b)=>b.pct-a.pct||b.date-a.date)[0]||{}).date:undefined}; novo.push(n);} });
   if(novo.length){ saveNow(true); const n=novo[novo.length-1]; setTimeout(()=>toast(n===0?'🎓 Certificado da trilha completa emitido!':'🎓 Certificado do nível '+n+' emitido!'),400); }
   return novo;
 }
@@ -2982,6 +2982,7 @@ function cfopView(){
 /* =================== configurações =================== */
 function config(sec){
   setTab(''); renderSide(); setLv(3);
+  if(sec==='provas'){ return provasAdmin((location.hash||'').split('/')[2]); }
   if(sec==='usuarios'&&isAdmin()&&!ADMIN_LOADED){ main.innerHTML='<div class="col"><p class="muted">Carregando usuários do banco de dados…</p></div>'; loadAllUsers().then(()=>{ if((location.hash||'').startsWith('#config/usuarios')) config('usuarios'); }).catch(e=>{ main.innerHTML=`<div class="col"><div class="note erro"><div class="ni">✕</div><p><b>Não foi possível carregar os usuários</b>${esc(ptErr(e))}</p></div></div>`; }); return; }
   const secs=[['perfil','Perfil'],['aparencia','Aparência'],['estudo','Estudo e provas'],['dados','Dados e backup'],...(isAdmin()?[['usuarios','Usuários'],['certificado','Certificado'],['voz','Voz do Mestre']]:[]),['sair','Sair']];
   sec=secs.some(s=>s[0]===sec)?sec:'perfil';
@@ -3010,7 +3011,7 @@ function config(sec){
    ${us.map(x=>{migrateUser(x); const summ=Object.values(COURSES).map(c=>{const d=x.cd[c.id]||newCD(); return `${c.curto}: ${Object.keys(d.done||{}).length} aulas, ${Object.keys(d.certs||{}).length} cert.`;}).join(' · ');
    return `<div class="urow" data-u="${x.id}" style="${x.ativo===false?'opacity:.55':''}"><div><b>${esc(x.nome)}</b> <span class="pill ${x.role==='admin'?'adm':''}">${x.role==='admin'?'Administrador':'Aluno'}</span>${x.ativo===false?' <span class="pill">Desativado</span>':''}<div class="muted">${esc(x.email)} · ${esc(x.cargo||'')}</div><div class="muted">${summ}${x.lastLogin?' · último acesso '+fmtDate(x.lastLogin):''}</div></div>
    <div style="display:flex;flex-direction:column;gap:6px">${x.role==='admin'?'<span class="muted">Acesso total a todos os treinamentos</span>':Object.values(COURSES).map(c=>`<div class="lvchk" aria-label="Acesso ao treinamento ${c.nome}"><label class="crsl"><input type="checkbox" data-crs="${c.id}" ${x.courses.includes(c.id)?'checked':''}><b>${c.icon} ${c.curto}</b></label>${[1,2,3,4].map(n=>`<label><input type="checkbox" data-lv="${c.id}:${n}" ${(x.access[c.id]||[]).includes(n)?'checked':''}>N${n}</label>`).join('')}</div>`).join('')}</div>
-   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${x.id!==u.id?`<select data-role aria-label="Perfil"><option value="aluno" ${x.role==='aluno'?'selected':''}>Aluno</option><option value="admin" ${x.role==='admin'?'selected':''}>Administrador</option></select><label class="lvchk" style="margin:0"><label style="margin:0"><input type="checkbox" data-ativo ${x.ativo!==false?'checked':''}>Ativo</label></label><button class="btn ghost" data-reset type="button" title="Envia um e-mail para o usuário criar nova senha">Enviar link de senha</button>`:'<span class="muted">Você</span>'}</div></div>`;}).join('')}
+   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${x.id!==u.id?`<select data-role aria-label="Perfil"><option value="aluno" ${x.role==='aluno'?'selected':''}>Aluno</option><option value="admin" ${x.role==='admin'?'selected':''}>Administrador</option></select><label class="lvchk" style="margin:0"><label style="margin:0"><input type="checkbox" data-ativo ${x.ativo!==false?'checked':''}>Ativo</label></label><button class="btn ghost" data-reset type="button" title="Envia um e-mail para o usuário criar nova senha">Enviar link de senha</button>`:'<span class="muted">Você</span>'}<button class="btn ghost" type="button" onclick="location.hash='#config/provas/${x.id}'">Provas e certificados</button></div></div>`;}).join('')}
    <div class="msg" id="uMsg"></div><div class="actions"><button class="btn" id="uSave">Salvar usuários</button><button class="btn ghost" id="uReload" type="button">Atualizar lista</button></div>
    <p class="muted">Para excluir definitivamente uma conta, desative-a aqui e depois apague o usuário no painel do Supabase (Authentication › Users).</p>`;},
   voz:()=>{const o=STORE.org, on=!!(o.vozExterna||o.vozHeygen), prov=o.vozProvider||(o.vozHeygen?'heygen':''), vv=o.vozVoice||(o.vozHeygen?o.heygenVoice:'')||'', PV=window.VZPROV, VL=window.VZVOICES||[];
@@ -3144,6 +3145,61 @@ async function boot(){
   if(/type=recovery/.test(location.hash)) RECOVERY=true;
   if(/access_token|type=/.test(location.hash)&&!RECOVERY) history.replaceState(null,'',BASE_URL+'#home');
   route();
+}
+
+
+/* =================== Administração de provas e certificados =================== */
+function provasAdmin(uid){
+  if(!isAdmin()){ location.hash='#config'; return; }
+  if(typeof ADMIN_LOADED!=='undefined'&&!ADMIN_LOADED&&typeof loadAllUsers==='function'){
+    main.innerHTML='<div class="col"><p class="muted">Carregando dados do usuário…</p></div>';
+    loadAllUsers().then(()=>{ if((location.hash||'').startsWith('#config/provas')) provasAdmin(uid); }).catch(e=>toast(ptErr(e))); return; }
+  const x=STORE.users[uid]; if(!x){ location.hash='#config/usuarios'; return; }
+  migrateUser(x); setTab(''); renderSide(); setLv(3);
+  const mmss=s=>String(Math.floor((s||0)/60)).padStart(2,'0')+':'+String((s||0)%60).padStart(2,'0');
+  const linked=(cert,hist)=>{ if(!cert) return null; if(cert.exam) return hist.find(h=>h.date===cert.exam)||null;
+    const ok=hist.filter(h=>h.pct>=h.pass&&h.date<=cert.date+60000); return ok.find(h=>h.pct===cert.pct)||ok.sort((a,b)=>b.date-a.date)[0]||null; };
+  const blocks=Object.values(COURSES).map(c=>{
+    const cd=x.cd[c.id]; if(!cd||!Object.keys(cd.exams||{}).some(k=>(cd.exams[k]||[]).length)) return '';
+    const lv=c.levels.map(L=>{ const hist=((cd.exams||{})[L.n]||[]).slice().sort((a,b)=>b.date-a.date); if(!hist.length) return '';
+      const cert=(cd.certs||{})[L.n], lk=linked(cert,hist), extra=hist.length-1;
+      return `<div class="padm" data-c="${c.id}" data-n="${L.n}"><div class="padm-h"><b>Nível ${L.n} · ${esc(L.title)}</b>
+        <span class="pill">${hist.length} tentativa(s)</span>${cert?`<span class="pill adm">Certificado ${esc(cert.code)} · ${cert.pct}%</span>`:'<span class="pill">Sem certificado</span>'}${cert&&cert.subst?`<span class="pill">Prova substituída em ${fmtDate(cert.subst.at)}</span>`:''}</div>
+        <div class="tw"><table><thead><tr><th>Usar no certificado</th><th>Data</th><th class="r">Acertos</th><th class="r">Nota</th><th class="r">Tempo</th><th>Resultado</th><th></th></tr></thead><tbody>
+        ${hist.map(h=>{const pass=h.pct>=h.pass, isL=lk&&lk.date===h.date; return `<tr${isL?' class="tot"':''}><td>${pass&&cert?`<input type="radio" name="sel_${c.id}_${L.n}" value="${h.date}" ${isL?'checked':''} aria-label="Usar esta prova no certificado">`:'—'}</td>
+          <td>${fmtDate(h.date)}${isL?' <span class="pill adm">no certificado</span>':''}</td><td class="r">${h.score}/${h.total}</td><td class="r">${h.pct}%</td><td class="r">${mmss(h.secs)}</td>
+          <td>${pass?'<span class="stamp2 ok">Aprovado</span>':'<span class="stamp2 no">Reprovado</span>'}</td>
+          <td>${isL?'':`<button class="linkbtn" type="button" data-del="${h.date}">Excluir</button>`}</td></tr>`;}).join('')}</tbody></table></div>
+        <div class="actions" style="margin-top:8px;padding-top:10px">
+          <button class="btn ghost" type="button" data-clean ${extra<1?'disabled':''}>Limpar provas adicionais${extra>0?` (${extra})`:''}</button>
+          ${cert?`<button class="btn" type="button" data-subst>Substituir prova do certificado</button><label class="lvchk" style="margin:0;align-self:center"><label style="margin:0"><input type="checkbox" data-usedate>Usar a data da prova escolhida como data de emissão</label></label>`:''}
+        </div></div>`; }).join('');
+    return lv?`<section class="cfg" style="margin-bottom:16px"><h2 style="font-size:20px">${c.icon} ${esc(c.nome)}</h2>${lv}</section>`:'';
+  }).join('');
+  main.innerHTML=`<div class="col" style="max-width:1040px"><header class="lhead"><div class="meta"><span class="chip">Somente administrador</span><a href="#config/usuarios">← Voltar para Usuários</a></div><h1>Provas e certificados</h1>
+  <p class="lead" style="margin:0"><b>${esc(x.nome)}</b> · ${esc(x.email)}. Limpe tentativas de prova que sobraram ou escolha qual prova aprovada vale para o certificado. O código de verificação do certificado não muda.</p></header>
+  <div class="msg" id="paMsg"></div>
+  ${blocks||'<div class="note aten"><div class="ni">!</div><p><b>Sem provas</b>Este usuário ainda não fez nenhuma prova.</p></div>'}
+  <p class="muted">"Limpar provas adicionais" mantém apenas a prova usada no certificado (ou, se ainda não houver certificado, a de maior nota) e apaga as demais tentativas daquele nível. As provas apagadas deixam de contar no histórico e o rodízio de questões do aluno é reiniciado para o nível.</p>${foot()}</div>`;
+  const persist=async(msgOk)=>{ try{ if(x.id!==U().id&&typeof saveProgressOf==='function'){ await saveProgressOf(x); } else { if(x.id===U().id) mark(); await saveNow(true); } toast(msgOk); provasAdmin(uid); }catch(e){ const m=$('#paMsg'); m.className='msg err'; m.textContent='Não foi possível salvar: '+ptErr(e); } };
+  const log=(cd,a)=>{ (cd.adminLog=cd.adminLog||[]).push({at:Date.now(),by:U().nome,...a}); cd.adminLog=cd.adminLog.slice(-50); };
+  const refreshTrail=(cd,c)=>{ const k=cd.certs||{}; if(k[0]&&[1,2,3,4].every(n=>k[n])) k[0].pct=Math.round([1,2,3,4].reduce((a,n)=>a+k[n].pct,0)/4); };
+  main.querySelectorAll('.padm').forEach(box=>{
+    const cid=box.dataset.c, n=+box.dataset.n, cd=x.cd[cid], hist=()=>((cd.exams||{})[n]||[]), cert=(cd.certs||{})[n];
+    box.querySelectorAll('[data-del]').forEach(b=>{ let conf=false; b.onclick=()=>{ if(!conf){ conf=true; b.textContent='Confirmar exclusão'; b.style.color='var(--bad)'; return; }
+      const d=+b.dataset.del; cd.exams[n]=hist().filter(h=>h.date!==d); if(cd.qhist) delete cd.qhist['p'+n]; log(cd,{acao:'excluir prova',nivel:n,prova:d}); persist('Tentativa excluída'); }; });
+    const cl=box.querySelector('[data-clean]'); if(cl){ let conf=false; cl.onclick=()=>{ if(!conf){ conf=true; cl.textContent='Confirmar: apagar as tentativas adicionais'; cl.classList.add('danger'); cl.classList.remove('ghost'); return; }
+      const h=hist(); const keep=linked(cert,h)||h.slice().sort((a,b)=>b.pct-a.pct||b.date-a.date)[0];
+      if(cert&&keep&&!cert.exam) cert.exam=keep.date;
+      cd.exams[n]=keep?[keep]:[]; if(cd.qhist) delete cd.qhist['p'+n]; log(cd,{acao:'limpar provas adicionais',nivel:n,removidas:h.length-1}); persist('Provas adicionais removidas'); }; }
+    const sb=box.querySelector('[data-subst]'); if(sb) sb.onclick=()=>{ const r=box.querySelector('input[type=radio]:checked'); const m=$('#paMsg');
+      if(!r){ m.className='msg err'; m.textContent='Selecione a prova aprovada que deve valer para o certificado.'; return; }
+      const att=hist().find(h=>h.date===+r.value); if(!att||att.pct<att.pass){ m.className='msg err'; m.textContent='Só uma prova aprovada pode ser usada no certificado.'; return; }
+      const cur=linked(cert,hist()); if(cur&&cur.date===att.date){ m.className='msg ok'; m.textContent='Essa prova já é a usada no certificado.'; return; }
+      cert.subst={at:Date.now(),by:U().nome,prev:{pct:cert.pct,exam:cert.exam||(cur&&cur.date)||null,date:cert.date}};
+      cert.pct=att.pct; cert.exam=att.date; if(box.querySelector('[data-usedate]')&&box.querySelector('[data-usedate]').checked) cert.date=att.date;
+      refreshTrail(cd); log(cd,{acao:'substituir prova do certificado',nivel:n,prova:att.date,nota:att.pct}); persist('Prova do certificado substituída'); };
+  });
 }
 
 /* =================== Prática: exemplos resolvidos, exercícios e casos =================== */
